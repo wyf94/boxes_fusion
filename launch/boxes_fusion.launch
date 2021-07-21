@@ -1,7 +1,0 @@
-<?xml version="1.0"?>
-
-<launch>
-  <node name="boxes_fusion" pkg="boxes_fusion" type="boxes_fusion_node.py" output="screen">
-    <rosparam command="load" file="$(find boxes_fusion)/launch/boxes_fusion.yaml"/>
-  </node>
-</launch>

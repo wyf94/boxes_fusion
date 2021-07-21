@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>boxes_fusion</name>
+  <name>traffic_count</name>
   <version>0.0.0</version>
-  <description>The boxes_fusion package</description>
+  <description>The traffic_count package</description>
   <maintainer email="ilyas@todo.todo">ilyas</maintainer>
   <license>TODO</license>
 

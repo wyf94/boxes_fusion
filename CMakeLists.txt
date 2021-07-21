@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(boxes_fusion)
+project(traffic_count)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
@@ -7,13 +7,19 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   cv_bridge
   message_generation
+  sensor_msgs
 )
 
 catkin_python_setup()
 
+
 add_message_files(
   FILES
+  BoundingBox.msg
+  BoundingBoxes.msg
 )
+
+# generate_messages(DEPENDENCIES std_msgs )
 
 generate_messages(
   DEPENDENCIES
@@ -34,11 +40,11 @@ include_directories(
 )
 
 catkin_install_python(PROGRAMS
-  node/boxes_fusion_node.py
+  node/traffic_count_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 install(FILES
-  launch/boxes_fusion.launch
+  launch/traffic_count.launch
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
