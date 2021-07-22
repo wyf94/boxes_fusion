@@ -119,33 +119,26 @@ class TrafficCount(object):
                 elif polygon_mask_first_and_second[y, x] == 2:
                     second_num[cls_index] += 1
 
-            # print("first_num", first_num)
-            # print("second_num", second_num)
-
             for index in range(0, class_num):
                 first_list[0][index] = first_list[1][index] 
                 first_list[1][index] = first_num[index] 
                 second_list[0][index] = second_list[1][index] 
                 second_list[1][index] = second_num[index]
 
-            print("first_list",first_list)
-            print("second_list",second_list)
+            # print("first_list",first_list)
+            # print("second_list",second_list)
 
             for i in range(0, class_num):
                 if first_list[0][i] > first_list[1][i]:
                     first_diff = first_list[0][i] - first_list[1][i]
-                    second_diff =  second_list[1][i] = second_list[0][i]
-                    print ("diff: ", first_diff, second_diff, "\n\n")
+                    second_diff =  second_list[1][i] - second_list[0][i]
                     if first_diff == second_diff:
                         up_count[i] += first_diff
-                        print("up_count",up_count[i] )
                 elif second_list[0][i] > second_list[1][i]:
                     first_diff = first_list[1][i] - first_list[0][i]
-                    second_diff =  second_list[0][i] = second_list[1][i]
-                    print ("diff: ", first_diff, second_diff, "\n\n" )
+                    second_diff =  second_list[0][i] - second_list[1][i]
                     if first_diff == second_diff:
                         down_count[i] += second_diff
-                        print("down_count",down_count[i] )
 
         return up_count, down_count                      
 
