@@ -3,6 +3,7 @@
 
 import rospy
 import numpy as np
+from rospy.topics import _PublisherImpl
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 import cv2
@@ -10,6 +11,7 @@ import sys
 import requests
 import json
 import os
+from threading import Timer
 
 from traffic_count.msg import BoundingBox
 from traffic_count.msg import BoundingBoxes
@@ -78,8 +80,7 @@ def get_point(event, x, y, flags, param):
         print('clicking: ', x, y)
 
 def callback(image, boxes):
-    global frame_count, up_count, down_count, blue_list, yellow_list, classes_list, point_roi, line, lines, polygons, multi_roi, multi_line, roi_num
-
+    global frame_count, up_count, down_count, blue_list, yellow_list, classes_list, point_roi, line, lines, polygons, multi_roi, multi_line, roi_num,json_path, Publisher_json
     # ct = CameraTools(905.8602,516.4283,1626.513816,1624.574619,1200 ,11)
     # x,y = ct.pixel2world(500,600)
     # print("相机投影坐标：",x,y)
@@ -119,71 +120,62 @@ def callback(image, boxes):
 
 
     # 每个roi区域的各个类别数量
-    ROI_statistics = []
     for index in range(0, len(multi_roi)):
         roi_num[index], roi_color_image = utils.roi_count(multi_roi[index], boxes.bounding_boxes, classes_list,  [0, 0, 255], size)
         cv_image = cv2.add(cv_image, roi_color_image)
-        # print("roi_num ", index, " :", roi_num[index] )
-        car_num =  roi_num[index][1] + roi_num[index][2] + roi_num[index][6]
+        classified_statistic =[]
+        sum = 0
+        for i in range(0, len(classes_list)):
+            sum += roi_num[index][i]
+            classified_count = {
+                "class":classes_list[i],
+                "num":roi_num[index][i]
+            }
+            classified_statistic.append(classified_count)
         area_json = {
-            'name': polygons[index]['road_number'], 
-            'car_num': car_num,
-            'count_list': roi_num[index]
+            'area_id': polygons[index]['road_number'], 
+            'car_num': sum,
+            'count_list': classified_statistic
         }
         ROI_statistics.append(area_json)
-    # print(ROI_statistics)
-        # json_str = json.dumps(Line_statistics, indent=4)
-    # with open('test_data.json', 'w') as json_file:
-    #     json_file.write(json_str)
-
-
-    # payload = []
-
-    # for i in range(0, len(multi_roi)):
-    #     roi_count, roi_count_list = roi_point_detect(multi_roi[i], boxes.bounding_boxes, classes_list)
-    #     area_json = {
-    #         'name': polygons[i]['road_number'],
-    #         'count_num': roi_count,
-    #         'count_list': roi_count_list
-    #     }
-    #     payload.append(area_json)
-    
-    # print(payload)
+    # print('ROI_statistics',ROI_statistics)
 
     # 各个类别穿过每条线的统计情况
-    Line_statistics = []
     for index in range(0, len(multi_line)):
         polygon_mask_blue_and_yellow, polygon_color_image = utils.line2polygon(multi_line[index], 0, 10, size)
         up_count[index], down_count[index] = utils.traffic_count(cv_image, boxes.bounding_boxes, classes_list,  polygon_mask_blue_and_yellow, 
-                                                                                                    blue_list[index], yellow_list[index],  up_count[index], down_count[index])
+                                                                blue_list[index], yellow_list[index],  up_count[index], down_count[index])
         cv_image = cv2.add(cv_image, polygon_color_image)
-        classified_statistic = {}
+        classified_statistic =[]
+        sum = 0
         for i in range(0, len(classes_list)):
-
-            classified_statistic[classes_list[i]] = up_count[index][i]
-        
-        # print('classified_statistic:', classified_statistic)
+            sum += up_count[index][i]
+            classified_count = {
+                "class":classes_list[i],
+                "up_count":up_count[index][i],
+                "down_count":down_count[index][i]
+            }
+            classified_statistic.append(classified_count)
         line_json = {
             'channel_id': lines[index]['name'], 
-            'up_count': up_count[index].tolist(),
-            'down_count':down_count[index].tolist()
+            'total_car': sum,
+            'classified_statistic':classified_statistic
         }
         Line_statistics.append(line_json)
-    # print(Line_statistics)
+    # print('Line_statistics',Line_statistics)
 
-    # current_dir = os.path.dirname(__file__)
-    # json_str = json.dumps(Line_statistics, indent=4)
-    # with open('test_data.json', 'w') as json_file:
-    #     json_file.write(json_str)
+    # Publisher_json = {
+    #     "period_statistical_info":Line_statistics,
+    #     "area_statistical_info":ROI_statistics
+    # }
+    # print('Publisher_json',Publisher_json)
 
+    # 实时更新ROI区域内的信息，并写入json文件
+    Publisher_json.update({"area_statistical_info":ROI_statistics})
+    json_str = json.dumps(Publisher_json, indent=4)
+    with open(json_path, 'w') as json_file:
+        json_file.write(json_str)
 
-    # tc = TrafficCount(cv_image, boxes.bounding_boxes, classes_list,  line)
-
-    # polygon_mask_blue_and_yellow, polygon_color_image = tc.line2polygon(0, 20)
-    # # classes_num = tc.image_count()
-    # roi_num, roi_color_image = tc.roi_count(multi_roi[0], [0, 0, 255])
-    # up_count, down_count = tc.traffic_count(
-    #     polygon_mask_blue_and_yellow, blue_list, yellow_list,  up_count, down_count)
 
     font_draw_number = cv2.FONT_HERSHEY_SIMPLEX
     draw_text_postion = (int(1224 * 0.01), int(1024 * 0.05))
@@ -192,7 +184,7 @@ def callback(image, boxes):
 
     # print(cv_image.shape)
     # print (polygon_color_image.shape)
-    cv_image = cv2.add(cv_image, polygon_color_image)
+    # cv_image = cv2.add(cv_image, polygon_color_image)
     # cv_image = cv2.add(cv_image, roi_color_image)
     # cv_image = cv2.add(cv_image, polygon_color_01)
     cv_image = cv2.putText(img=cv_image, text=text_draw,
@@ -219,11 +211,36 @@ def read_json():
     return lines, polygons
 
 
+
+def dump_json():
+    global Publisher_json, json_path, Line_statistics, ROI_statistics,up_count,down_count
+    Publisher_json = {
+        "period_statistical_info":Line_statistics,
+        "area_statistical_info":ROI_statistics
+    }
+    # up_count, down_count 数据清零
+    up_count = np.zeros((len(lines),  len(classes_list)))
+    down_count = np.zeros((len(lines),  len(classes_list)))
+    # 把数据dump到json文件里
+    json_str = json.dumps(Publisher_json, indent=4)
+    with open(json_path, 'w') as json_file:
+        json_file.write(json_str)
+    print("Dump data into json successed.")
+
+class RepeatingTimer(Timer): 
+    def run(self):
+        while not self.finished.is_set():
+            self.function(*self.args, **self.kwargs)
+            self.finished.wait(self.interval)
+
 if __name__ == '__main__':
     # rospy.init_node('showImage',anonymous = True)/
     rospy.init_node('traffic_count', anonymous=True)
     img_pub = rospy.Publisher('/traffic_count_publisher', Image, queue_size=10)
     rate = rospy.Rate(25)
+
+    current_dir = os.path.dirname(__file__)
+    json_path = os.path.join(current_dir + "/../json/yolo_statistics.json")
 
     classes_list = CLASSES_LIST
     lines, polygons = read_json()
@@ -237,6 +254,10 @@ if __name__ == '__main__':
     down_count = np.zeros((len(lines),  len(classes_list)))
     blue_list = np.zeros((len(lines), 2, len(classes_list)))
     yellow_list = np.zeros((len(lines), 2, len(classes_list)))
+
+    Publisher_json = {}
+    Line_statistics = []
+    ROI_statistics = []
     
     frame_count = 0
 
@@ -252,47 +273,10 @@ if __name__ == '__main__':
         print(multi_roi[count])
         count = count + 1
 
-    current_dir = os.path.dirname(__file__)
+    # 每60秒更新一次周期统计信息，并把统计信息置零
+    t = RepeatingTimer(60.0,dump_json)
+    t.start()
 
-    Line_statistics = []
-    ROI_statistics = []
-
-    line_json_path = os.path.join(current_dir + "../json/line_statistics.json")
-    roi_json_path = os.path.join(current_dir + "../json/roi_statistics.json")
-
-    # for polygon in polygons:
-    #     # image_mask = np.zeros(image_size, dtype=np.uint8)
-    #     # ndarray_pts = np.array(polygon['points'], np.int32)
-    #     # polygon_color_value = cv2.fillPoly(image_mask, [ndarray_pts], 1)
-    #     # polygon_color_value = polygon_color_value[:, :, np.newaxis]
-    #     # color_plate = (0, 0, 255)
-    #     # multi_roi[count] = np.array(polygon_color_value * color_plate, np.uint8)
-    #     # # multi_roi[count] = image_mask
-    #     multi_roi[count] = polygon['points']
-    #     print(multi_roi[count])
-
-    #     # image_mask = cv2.resize(multi_roi[count], None, fx=0.3, fy=0.3)
-    #     # cv2.imshow(str(count), image_mask)
-
-    #     count = count + 1
-
-    # cv2.waitKey(0)
-
-    # point_roi = [[321*2, 356*2], [369*2, 357*2],
-    #             [364*2, 287*2], [337*2, 292*2]]
-    # point_roi = multi_roi[0]
-
-    
-    # print(CLASSES_LIST)
-    # # line = [[205*2, 385*2], [425*2, 385*2]]
-    # line = [[425*2, 325*2], [570*2, 325*2]]
-
-    # category_number = len(classes_list)
-
-    # up_count = [0]*category_number
-    # down_count = [0]*category_number
-    # blue_list = np.zeros((2, category_number))
-    # yellow_list = np.zeros((2, category_number))
 
     # image_sub0 = message_filters.Subscriber('/bitcq_camera/image_source0/compressed', CompressedImage)
     # boxes_sub1 = message_filters.Subscriber('/bounding_boxes', BoundingBoxes)
