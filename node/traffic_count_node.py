@@ -124,8 +124,10 @@ def callback(image, boxes):
         roi_num[index], roi_color_image = utils.roi_count(multi_roi[index], boxes.bounding_boxes, classes_list,  [0, 0, 255], size)
         cv_image = cv2.add(cv_image, roi_color_image)
         # print("roi_num ", index, " :", roi_num[index] )
+        car_num =  roi_num[index][1] + roi_num[index][2] + roi_num[index][6]
         area_json = {
             'name': polygons[index]['road_number'], 
+            'car_num': car_num,
             'count_list': roi_num[index]
         }
         ROI_statistics.append(area_json)
@@ -155,14 +157,19 @@ def callback(image, boxes):
         up_count[index], down_count[index] = utils.traffic_count(cv_image, boxes.bounding_boxes, classes_list,  polygon_mask_blue_and_yellow, 
                                                                                                     blue_list[index], yellow_list[index],  up_count[index], down_count[index])
         cv_image = cv2.add(cv_image, polygon_color_image)
+        classified_statistic = {}
+        for i in range(0, len(classes_list)):
+
+            classified_statistic[classes_list[i]] = up_count[index][i]
         
+        # print('classified_statistic:', classified_statistic)
         line_json = {
             'channel_id': lines[index]['name'], 
             'up_count': up_count[index].tolist(),
             'down_count':down_count[index].tolist()
         }
         Line_statistics.append(line_json)
-    print(Line_statistics)
+    # print(Line_statistics)
 
     # current_dir = os.path.dirname(__file__)
     # json_str = json.dumps(Line_statistics, indent=4)
