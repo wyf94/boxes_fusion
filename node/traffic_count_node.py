@@ -12,6 +12,8 @@ import requests
 import json
 import os
 from threading import Timer
+import time
+import signal
 
 from traffic_count.msg import BoundingBox
 from traffic_count.msg import BoundingBoxes
@@ -28,50 +30,51 @@ import traffic_count.traffic_utils as utils
 from traffic_count.classes import CLASSES_LIST
 
 
-def point_in_polygon(x, y, verts):
-    """
-    - PNPoly算法
-    - 参考网站:https://www.jianshu.com/p/3187832cb6cc
-    功能: 判断一个点是否在多边形内部
-    参数:
-        x,y: 需要检测的点的坐标
-        verts: 多边形各点的坐标, [(x1, y1), (x2, y2), (x3, y3), ...]
-    """
-    try:
-        x, y = float(x), float(y)
-    except:
-        return False
-    #print('verts:',verts)
-    vertx = [xyvert[0] for xyvert in verts]
-    #print('vertx:',vertx)
-    verty = [xyvert[1] for xyvert in verts]
 
-    # N个点中，横坐标和纵坐标的最大值和最小值，判断目标坐标点是否在这个四边形之内
-    if not verts or not min(vertx) <= x <= max(vertx) or not min(verty) <= y <= max(verty):
-        return False
+# def point_in_polygon(x, y, verts):
+#     """
+#     - PNPoly算法
+#     - 参考网站:https://www.jianshu.com/p/3187832cb6cc
+#     功能: 判断一个点是否在多边形内部
+#     参数:
+#         x,y: 需要检测的点的坐标
+#         verts: 多边形各点的坐标, [(x1, y1), (x2, y2), (x3, y3), ...]
+#     """
+#     try:
+#         x, y = float(x), float(y)
+#     except:
+#         return False
+#     #print('verts:',verts)
+#     vertx = [xyvert[0] for xyvert in verts]
+#     #print('vertx:',vertx)
+#     verty = [xyvert[1] for xyvert in verts]
 
-    # 上一步通过后，核心算法部分
-    nvert = len(verts)
-    is_in = False
-    for i in range(nvert):
-        j = nvert - 1 if i == 0 else i - 1
-        if ((verty[i] > y) != (verty[j] > y)) and (
-                x < (vertx[j] - vertx[i]) * (y - verty[i]) / (verty[j] - verty[i]) + vertx[i]):
-            is_in = not is_in
+#     # N个点中，横坐标和纵坐标的最大值和最小值，判断目标坐标点是否在这个四边形之内
+#     if not verts or not min(vertx) <= x <= max(vertx) or not min(verty) <= y <= max(verty):
+#         return False
 
-    return is_in
+#     # 上一步通过后，核心算法部分
+#     nvert = len(verts)
+#     is_in = False
+#     for i in range(nvert):
+#         j = nvert - 1 if i == 0 else i - 1
+#         if ((verty[i] > y) != (verty[j] > y)) and (
+#                 x < (vertx[j] - vertx[i]) * (y - verty[i]) / (verty[j] - verty[i]) + vertx[i]):
+#             is_in = not is_in
 
-def roi_point_detect(roi, bboxes, class_list):
-    count_list = [0]*len(class_list)
-    count = 0
-    for bbox in bboxes:
-        x = int(bbox.xmin + (bbox.xmax - bbox.xmin) * 0.5)
-        y = int(bbox.ymin + (bbox.ymax - bbox.ymin) * 0.5)
-        if roi[x][y].any != 0:
-            print(roi[x][y])
-            count_list[class_list.index(bbox.Class)] += 1
-            count += 1
-    return count, count_list
+#     return is_in
+
+# def roi_point_detect(roi, bboxes, class_list):
+#     count_list = [0]*len(class_list)
+#     count = 0
+#     for bbox in bboxes:
+#         x = int(bbox.xmin + (bbox.xmax - bbox.xmin) * 0.5)
+#         y = int(bbox.ymin + (bbox.ymax - bbox.ymin) * 0.5)
+#         if roi[x][y].any != 0:
+#             print(roi[x][y])
+#             count_list[class_list.index(bbox.Class)] += 1
+#             count += 1
+#     return count, count_list
 
 def get_point(event, x, y, flags, param):
     # 鼠标单击事件
@@ -120,6 +123,7 @@ def callback(image, boxes):
 
 
     # 每个roi区域的各个类别数量
+    ROI_statistics = []
     for index in range(0, len(multi_roi)):
         roi_num[index], roi_color_image = utils.roi_count(multi_roi[index], boxes.bounding_boxes, classes_list,  [0, 0, 255], size)
         cv_image = cv2.add(cv_image, roi_color_image)
@@ -138,9 +142,10 @@ def callback(image, boxes):
             'count_list': classified_statistic
         }
         ROI_statistics.append(area_json)
-    # print('ROI_statistics',ROI_statistics)
+    # print('ROI_statistics:',ROI_statistics)
 
     # 各个类别穿过每条线的统计情况
+    Line_statistics = []
     for index in range(0, len(multi_line)):
         polygon_mask_blue_and_yellow, polygon_color_image = utils.line2polygon(multi_line[index], 0, 10, size)
         up_count[index], down_count[index] = utils.traffic_count(cv_image, boxes.bounding_boxes, classes_list,  polygon_mask_blue_and_yellow, 
@@ -152,8 +157,7 @@ def callback(image, boxes):
             sum += up_count[index][i]
             classified_count = {
                 "class":classes_list[i],
-                "up_count":up_count[index][i],
-                "down_count":down_count[index][i]
+                "num":up_count[index][i] + down_count[index][i],
             }
             classified_statistic.append(classified_count)
         line_json = {
@@ -162,12 +166,12 @@ def callback(image, boxes):
             'classified_statistic':classified_statistic
         }
         Line_statistics.append(line_json)
-    # print('Line_statistics',Line_statistics)
+    # print('Line_statistics:',Line_statistics)
 
-    # Publisher_json = {
-    #     "period_statistical_info":Line_statistics,
-    #     "area_statistical_info":ROI_statistics
-    # }
+    Publisher_json = {
+        "period_statistical_info":Line_statistics,
+        "area_statistical_info":ROI_statistics
+    }
     # print('Publisher_json',Publisher_json)
 
     # 实时更新ROI区域内的信息，并写入json文件
@@ -213,11 +217,7 @@ def read_json():
 
 
 def dump_json():
-    global Publisher_json, json_path, Line_statistics, ROI_statistics,up_count,down_count
-    Publisher_json = {
-        "period_statistical_info":Line_statistics,
-        "area_statistical_info":ROI_statistics
-    }
+    global Publisher_json, json_path, up_count, down_count, dump_num
     # up_count, down_count 数据清零
     up_count = np.zeros((len(lines),  len(classes_list)))
     down_count = np.zeros((len(lines),  len(classes_list)))
@@ -225,13 +225,15 @@ def dump_json():
     json_str = json.dumps(Publisher_json, indent=4)
     with open(json_path, 'w') as json_file:
         json_file.write(json_str)
-    print("Dump data into json successed.")
+    print("Dump data into json successed: ", dump_num)
+    dump_num += 1
 
 class RepeatingTimer(Timer): 
     def run(self):
         while not self.finished.is_set():
             self.function(*self.args, **self.kwargs)
             self.finished.wait(self.interval)
+
 
 if __name__ == '__main__':
     # rospy.init_node('showImage',anonymous = True)/
@@ -256,10 +258,9 @@ if __name__ == '__main__':
     yellow_list = np.zeros((len(lines), 2, len(classes_list)))
 
     Publisher_json = {}
-    Line_statistics = []
-    ROI_statistics = []
     
     frame_count = 0
+    dump_num = 0
 
     count = 0
     for line in lines:
@@ -272,11 +273,10 @@ if __name__ == '__main__':
         multi_roi[count] = polygon['points']
         print(multi_roi[count])
         count = count + 1
-
+    
     # 每60秒更新一次周期统计信息，并把统计信息置零
-    t = RepeatingTimer(60.0,dump_json)
+    t = RepeatingTimer(10.0,dump_json)
     t.start()
-
 
     # image_sub0 = message_filters.Subscriber('/bitcq_camera/image_source0/compressed', CompressedImage)
     # boxes_sub1 = message_filters.Subscriber('/bounding_boxes', BoundingBoxes)
@@ -285,3 +285,8 @@ if __name__ == '__main__':
     ts = message_filters.ApproximateTimeSynchronizer([image_sub0, boxes_sub1], queue_size=5, slop=0.1)
     ts.registerCallback(callback)
     rospy.spin()
+
+
+
+
+
