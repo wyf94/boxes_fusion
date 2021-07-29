@@ -1,24 +1,7 @@
-#Camera topic here
-camera_topic: "/traffic_count"
-queue_size: 1
+# Bounding boxes topic here
+bounding_boxes_topic: "bounding_boxes_nms"
+# Image topic here
+detect_image_topic: "output_image_nms"
 
-# Set your detection topic here
-# detection_topic: "/darknet_ros/bounding_boxes"
-
-# Set your output topic here
-#count_topic: "/image_matching"
-
-# Threshold for Costs between detections and tracks
-#cost_threhold: 15
-
-# min_hits
-min_hits: 1
-
-# max age
-max_age: 5
-
-image_view:
-
-  enable_opencv: true
-  wait_key_delay: 1
-  enable_console_output: true
+show_image: true
+publish_image: true

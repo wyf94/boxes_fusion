@@ -108,20 +108,12 @@ def traffic_count(image, list_bboxes, list_classes,  polygon_mask_first_and_seco
             y2 = list_bboxes[i].ymax
             cls = list_bboxes[i].Class
 
-            cls_index = list_classes.index(cls)
+            if (cls in list_classes):
+                cls_index = list_classes.index(cls)
             
             # 撞线的点(中心点)
             x = int(x1 + ((x2 - x1) * 0.5))
             y = int(y1 + ((y2 - y1) * 0.5))
-
-            # #画出中心list_bboxs的中心点
-            # list_pts = []
-            # list_pts.append([x-point_radius, y-point_radius])
-            # list_pts.append([x-point_radius, y+point_radius])
-            # list_pts.append([x+point_radius, y+point_radius])
-            # list_pts.append([x+point_radius, y-point_radius])
-            # ndarray_pts = np.array(list_pts, np.int32)
-            # image = cv2.fillPoly(image, [ndarray_pts], color=(0, 0, 255))           
 
             # 判断目标在是否在多边形0和1内
             if polygon_mask_first_and_second[y, x] == 1 or polygon_mask_first_and_second[y, x]  == 3:

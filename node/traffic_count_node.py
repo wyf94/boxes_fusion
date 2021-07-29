@@ -12,6 +12,7 @@ import requests
 import json
 import os
 from threading import Timer
+import threading
 import time
 import signal
 
@@ -23,58 +24,9 @@ from sensor_msgs.msg import Image, CameraInfo, CompressedImage
 
 
 from traffic_count.cameratool import CameraTools
-from traffic_count.utils import TrafficCount
-# import traffic_count.traffic_count as traffic_count
 import traffic_count.traffic_utils as utils
 # from traffic_count.yolo_classes import CLASSES_LIST
 from traffic_count.classes import CLASSES_LIST
-
-
-
-# def point_in_polygon(x, y, verts):
-#     """
-#     - PNPoly算法
-#     - 参考网站:https://www.jianshu.com/p/3187832cb6cc
-#     功能: 判断一个点是否在多边形内部
-#     参数:
-#         x,y: 需要检测的点的坐标
-#         verts: 多边形各点的坐标, [(x1, y1), (x2, y2), (x3, y3), ...]
-#     """
-#     try:
-#         x, y = float(x), float(y)
-#     except:
-#         return False
-#     #print('verts:',verts)
-#     vertx = [xyvert[0] for xyvert in verts]
-#     #print('vertx:',vertx)
-#     verty = [xyvert[1] for xyvert in verts]
-
-#     # N个点中，横坐标和纵坐标的最大值和最小值，判断目标坐标点是否在这个四边形之内
-#     if not verts or not min(vertx) <= x <= max(vertx) or not min(verty) <= y <= max(verty):
-#         return False
-
-#     # 上一步通过后，核心算法部分
-#     nvert = len(verts)
-#     is_in = False
-#     for i in range(nvert):
-#         j = nvert - 1 if i == 0 else i - 1
-#         if ((verty[i] > y) != (verty[j] > y)) and (
-#                 x < (vertx[j] - vertx[i]) * (y - verty[i]) / (verty[j] - verty[i]) + vertx[i]):
-#             is_in = not is_in
-
-#     return is_in
-
-# def roi_point_detect(roi, bboxes, class_list):
-#     count_list = [0]*len(class_list)
-#     count = 0
-#     for bbox in bboxes:
-#         x = int(bbox.xmin + (bbox.xmax - bbox.xmin) * 0.5)
-#         y = int(bbox.ymin + (bbox.ymax - bbox.ymin) * 0.5)
-#         if roi[x][y].any != 0:
-#             print(roi[x][y])
-#             count_list[class_list.index(bbox.Class)] += 1
-#             count += 1
-#     return count, count_list
 
 def get_point(event, x, y, flags, param):
     # 鼠标单击事件
@@ -83,16 +35,19 @@ def get_point(event, x, y, flags, param):
         print('clicking: ', x, y)
 
 def callback(image, boxes):
-    global frame_count, up_count, down_count, blue_list, yellow_list, classes_list, point_roi, line, lines, polygons, multi_roi, multi_line, roi_num,json_path, Publisher_json
+    # start  = time.time()
+    global frame_count, up_count, down_count, blue_list, yellow_list, classes_list, point_roi, lines, polygons, multi_roi, multi_line, roi_num,json_path, Publisher_json, Line_statistics
+    global show_image, publish_image
     # ct = CameraTools(905.8602,516.4283,1626.513816,1624.574619,1200 ,11)
     # x,y = ct.pixel2world(500,600)
     # print("相机投影坐标：",x,y)
     # print('像素坐标:',ct.world2pixel([x,y,0]))
+    print("sub frame: ", frame_count)
+
     bridge = CvBridge()
     # cv_image = bridge.compressed_imgmsg_to_cv2(image, "bgr8")
     cv_image = bridge.imgmsg_to_cv2(image,"bgr8")
     size = (cv_image.shape[0], cv_image.shape[1])
-
 
     # 在图像上画出每个bounding_boxes的中兴点
     point_radius = 3
@@ -117,10 +72,8 @@ def callback(image, boxes):
         ndarray_pts = np.array(list_pts, np.int32)
         cv_image = cv2.fillPoly(cv_image, [ndarray_pts], color=(0, 0, 255))     
 
-
     # 整张图像的各个类别数量
     classes_num = utils.image_count(boxes.bounding_boxes, classes_list)
-
 
     # 每个roi区域的各个类别数量
     ROI_statistics = []
@@ -143,6 +96,7 @@ def callback(image, boxes):
         }
         ROI_statistics.append(area_json)
     # print('ROI_statistics:',ROI_statistics)
+    
 
     # 各个类别穿过每条线的统计情况
     Line_statistics = []
@@ -154,10 +108,10 @@ def callback(image, boxes):
         classified_statistic =[]
         sum = 0
         for i in range(0, len(classes_list)):
-            sum += up_count[index][i]
+            sum = sum + up_count[index][i] + down_count[index][i]
             classified_count = {
                 "class":classes_list[i],
-                "num":up_count[index][i] + down_count[index][i],
+                "num":up_count[index][i] + down_count[index][i]
             }
             classified_statistic.append(classified_count)
         line_json = {
@@ -168,39 +122,42 @@ def callback(image, boxes):
         Line_statistics.append(line_json)
     # print('Line_statistics:',Line_statistics)
 
-    Publisher_json = {
-        "period_statistical_info":Line_statistics,
-        "area_statistical_info":ROI_statistics
-    }
+    # Publisher_json = {
+    #     "period_statistical_info":Line_statistics,
+    #     "area_statistical_info":ROI_statistics
+    # }
     # print('Publisher_json',Publisher_json)
 
+    # lock
+    lock.acquire()
     # 实时更新ROI区域内的信息，并写入json文件
     Publisher_json.update({"area_statistical_info":ROI_statistics})
     json_str = json.dumps(Publisher_json, indent=4)
     with open(json_path, 'w') as json_file:
         json_file.write(json_str)
+    # unlock
+    lock.release()
 
-
+    # show data in image
     font_draw_number = cv2.FONT_HERSHEY_SIMPLEX
     draw_text_postion = (int(1224 * 0.01), int(1024 * 0.05))
-    text_draw = 'DOWN: ' + str(down_count) + ' , UP: ' + str(up_count) + \
-        '  , Class Num: ' + str(classes_num) + '  , Roi Num: ' + str(roi_num)
-
-    # print(cv_image.shape)
-    # print (polygon_color_image.shape)
-    # cv_image = cv2.add(cv_image, polygon_color_image)
-    # cv_image = cv2.add(cv_image, roi_color_image)
-    # cv_image = cv2.add(cv_image, polygon_color_01)
+    text_draw = 'DOWN: ' + str(down_count) + ' , UP: ' + str(up_count) +  '  , Class Num: ' + str(classes_num)
     cv_image = cv2.putText(img=cv_image, text=text_draw,
-                           org=draw_text_postion,
-                           fontFace=font_draw_number,
-                           fontScale=0.3, color=(0, 0, 255), thickness=2)
+                        org=draw_text_postion,
+                        fontFace=font_draw_number,
+                        fontScale=0.5, color=(0, 0, 255), thickness=2)
 
-    # cv_image = cv2.resize(cv_image, None, fx=0.5, fy=0.5,
-    #                      interpolation=cv2.INTER_AREA)
-    cv2.setMouseCallback('cv_image', get_point, cv_image    )
-    # cv2.imshow("cv_image", cv_image)
-    cv2.waitKey(1)
+    if show_image:
+        cv_image = cv2.resize(cv_image, None, fx=0.5, fy=0.5,
+                            interpolation=cv2.INTER_AREA)
+        # cv2.setMouseCallback('cv_image', get_point, cv_image    )
+        cv2.imshow("cv_image", cv_image)
+        cv2.waitKey(1)
+
+    if publish_image:
+        msg = bridge.cv2_to_imgmsg(cv_image, encoding="bgr8")
+        img_pub.publish(msg)
+        rate.sleep()
 
     print("sub frame: ", frame_count)
     frame_count += 1
@@ -217,7 +174,10 @@ def read_json():
 
 
 def dump_json():
-    global Publisher_json, json_path, up_count, down_count, dump_num
+    global Publisher_json, json_path, Line_statistics, up_count, down_count, dump_num, lock
+    # lock
+    lock.acquire()
+    Publisher_json.update({"period_statistical_info":Line_statistics})
     # up_count, down_count 数据清零
     up_count = np.zeros((len(lines),  len(classes_list)))
     down_count = np.zeros((len(lines),  len(classes_list)))
@@ -227,6 +187,8 @@ def dump_json():
         json_file.write(json_str)
     print("Dump data into json successed: ", dump_num)
     dump_num += 1
+    # unlock
+    lock.release()
 
 class RepeatingTimer(Timer): 
     def run(self):
@@ -244,6 +206,8 @@ if __name__ == '__main__':
     current_dir = os.path.dirname(__file__)
     json_path = os.path.join(current_dir + "/../json/yolo_statistics.json")
 
+    lock = threading.Lock()
+
     classes_list = CLASSES_LIST
     lines, polygons = read_json()
 
@@ -258,6 +222,7 @@ if __name__ == '__main__':
     yellow_list = np.zeros((len(lines), 2, len(classes_list)))
 
     Publisher_json = {}
+    Line_statistics = []
     
     frame_count = 0
     dump_num = 0
@@ -275,14 +240,17 @@ if __name__ == '__main__':
         count = count + 1
     
     # 每60秒更新一次周期统计信息，并把统计信息置零
-    t = RepeatingTimer(10.0,dump_json)
+    t = RepeatingTimer(10.0, dump_json)
     t.start()
 
-    # image_sub0 = message_filters.Subscriber('/bitcq_camera/image_source0/compressed', CompressedImage)
-    # boxes_sub1 = message_filters.Subscriber('/bounding_boxes', BoundingBoxes)
-    image_sub0= message_filters.Subscriber('/output_image_nms', Image)
-    boxes_sub1 = message_filters.Subscriber('/bounding_boxes_nms', BoundingBoxes)
-    ts = message_filters.ApproximateTimeSynchronizer([image_sub0, boxes_sub1], queue_size=5, slop=0.1)
+    show_image = rospy.get_param('/traffic_count/show_image')
+    publish_image = rospy.get_param('/traffic_count/publish_image')
+    bounding_boxes_topic = rospy.get_param('/traffic_count/bounding_boxes_topic')
+    detect_image_topic = rospy.get_param('/traffic_count/detect_image_topic')
+
+    image_sub0= message_filters.Subscriber(detect_image_topic, Image)
+    boxes_sub1 = message_filters.Subscriber(bounding_boxes_topic, BoundingBoxes)
+    ts = message_filters.ApproximateTimeSynchronizer([image_sub0, boxes_sub1], queue_size=15, slop=0.3)
     ts.registerCallback(callback)
     rospy.spin()
 

@@ -106,7 +106,7 @@
         },
         {
             "area_id": "juxing2",
-            "car_num": 3,
+            "car_num": 2,
             "count_list": [
                 {
                     "class": "bike",
@@ -118,7 +118,7 @@
                 },
                 {
                     "class": "car",
-                    "num": 3
+                    "num": 2
                 },
                 {
                     "class": "motor",
