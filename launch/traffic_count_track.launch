@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+
+<launch>
+  <node name="traffic_count" pkg="traffic_count" type="traffic_count_track_node.py" output="screen">
+    <rosparam command="load" file="$(find traffic_count)/launch/traffic_count_track.yaml"/>
+  </node>
+</launch>

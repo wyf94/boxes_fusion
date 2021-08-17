@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/home/wyf/anaconda3/envs/test/bin/python
 #!coding=utf-8
 
 import rospy

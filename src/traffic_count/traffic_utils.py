@@ -101,7 +101,7 @@ def traffic_count(image, list_bboxes, list_classes,  polygon_mask_first_and_seco
 
     if len(list_bboxes) > 0:
         for i in range(0, len(list_bboxes)):
-            conf = list_bboxes[i].probability
+            # conf = list_bboxes[i].probability
             x1 = list_bboxes[i].xmin
             y1 = list_bboxes[i].ymin
             x2 = list_bboxes[i].xmax
@@ -114,7 +114,6 @@ def traffic_count(image, list_bboxes, list_classes,  polygon_mask_first_and_seco
             # 撞线的点(中心点)
             x = int(x1 + ((x2 - x1) * 0.5))
             y = int(y1 + ((y2 - y1) * 0.5))
-
             # 判断目标在是否在多边形0和1内
             if polygon_mask_first_and_second[y, x] == 1 or polygon_mask_first_and_second[y, x]  == 3:
                 first_num[cls_index] += 1
@@ -144,4 +143,80 @@ def traffic_count(image, list_bboxes, list_classes,  polygon_mask_first_and_seco
 
     return up_count, down_count                      
 
+def traffic_count_track(image, list_bboxes, list_classes,  polygon_mask_first_and_second, first_list, second_list,  up_count, down_count):
+    class_num = len(list_classes)
+    point_radius = 3
+
+    if len(list_bboxes) > 0:
+        for i in range(0, len(list_bboxes)):
+            track_id = list_bboxes[i].id
+            x1 = list_bboxes[i].xmin
+            y1 = list_bboxes[i].ymin
+            x2 = list_bboxes[i].xmax
+            y2 = list_bboxes[i].ymax
+            cls = list_bboxes[i].Class
+
+            if (cls in list_classes):
+                cls_index = list_classes.index(cls)
+            
+            # 撞线的点(中心点)
+            x = int(x1 + ((x2 - x1) * 0.5))
+            y = int(y1 + ((y2 - y1) * 0.5))
+
+            # 判断目标在是否在多边形0和1内
+            if polygon_mask_first_and_second[y,x]==1 or polygon_mask_first_and_second[y, x] == 3:
+                # 如果撞 蓝polygon
+                if track_id not in first_list:
+                    first_list.append(track_id)
+                # 判断 黄polygon list 里是否有此 track_id
+                # 有此 track_id，则 认为是 外出方向
+                if track_id in second_list:
+                    # 外出+1
+                    down_count[cls_index] += 1
+                    print('up count:', up_count, ', up id:', second_list)
+                    # 删除 黄polygon list 中的此id
+                    second_list.remove(track_id)
+
+
+            elif polygon_mask_first_and_second[y, x] == 2:
+                # 如果撞 黄polygon
+                if track_id not in second_list:
+                    second_list.append(track_id)
+                # 判断 蓝polygon list 里是否有此 track_id
+                # 有此 track_id，则 认为是 进入方向
+                if track_id in first_list:
+                    # 进入+1
+                    up_count[cls_index] += 1
+                    print('down count:', down_count, ', down id:', first_list)
+                    # 删除 蓝polygon list 中的此id
+                    first_list.remove(track_id)
+        pass
+
+        # ----------------------清除无用id----------------------
+        list_overlapping_all = second_list + first_list
+        for id in list_overlapping_all:
+            is_found = False
+            for i in range(0, len(list_bboxes)):
+                bbox_id = list_bboxes[i].id
+                if bbox_id == id:
+                    is_found = True
+                    break
+
+            if not is_found:
+                # 如果没找到，删除id
+                if id in second_list:
+                    second_list.remove(id)
+                if id in first_list:
+                    first_list.remove(id)
+        list_overlapping_all.clear()
+
+        # # 清空list
+        # list_bboxes.clear()
+
+    else:
+        # 如果图像中没有任何的bbox，则清空list
+        first_list.clear()
+        second_list.clear()
+
+    return up_count, down_count    
 

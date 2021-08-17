@@ -1,0 +1,16 @@
+# # Bounding boxes topic here
+# bounding_boxes_topic: "/sort_track/bounding_boxes"
+# # Image topic here
+# detect_image_topic: "/sort_track/image_track/compressed"
+
+# show_image: false
+# publish_image: true
+
+# Bounding boxes topic here
+# bounding_boxes_topic: "bounding_boxes_nms"
+bounding_boxes_topic: "bounding_boxes_0"
+# Image topic here
+detect_image_topic: "output_image_nms"
+
+show_image: true
+publish_image: true

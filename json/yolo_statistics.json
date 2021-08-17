@@ -1,4 +1,74 @@
 {
+    "area_statistical_info": [
+        {
+            "area_id": "juxing1",
+            "car_num": 1,
+            "count_list": [
+                {
+                    "class": "bike",
+                    "num": 0
+                },
+                {
+                    "class": "bus",
+                    "num": 0
+                },
+                {
+                    "class": "car",
+                    "num": 1
+                },
+                {
+                    "class": "motor",
+                    "num": 0
+                },
+                {
+                    "class": "person",
+                    "num": 0
+                },
+                {
+                    "class": "rider",
+                    "num": 0
+                },
+                {
+                    "class": "truck",
+                    "num": 0
+                }
+            ]
+        },
+        {
+            "area_id": "juxing2",
+            "car_num": 1,
+            "count_list": [
+                {
+                    "class": "bike",
+                    "num": 0
+                },
+                {
+                    "class": "bus",
+                    "num": 0
+                },
+                {
+                    "class": "car",
+                    "num": 1
+                },
+                {
+                    "class": "motor",
+                    "num": 0
+                },
+                {
+                    "class": "person",
+                    "num": 0
+                },
+                {
+                    "class": "rider",
+                    "num": 0
+                },
+                {
+                    "class": "truck",
+                    "num": 0
+                }
+            ]
+        }
+    ],
     "period_statistical_info": [
         {
             "channel_id": "zhixian1",
@@ -36,7 +106,7 @@
         },
         {
             "channel_id": "zhixian2",
-            "total_car": 0.0,
+            "total_car": 1.0,
             "classified_statistic": [
                 {
                     "class": "bike",
@@ -48,7 +118,7 @@
                 },
                 {
                     "class": "car",
-                    "num": 0.0
+                    "num": 1.0
                 },
                 {
                     "class": "motor",
@@ -65,76 +135,6 @@
                 {
                     "class": "truck",
                     "num": 0.0
-                }
-            ]
-        }
-    ],
-    "area_statistical_info": [
-        {
-            "area_id": "juxing1",
-            "car_num": 0,
-            "count_list": [
-                {
-                    "class": "bike",
-                    "num": 0
-                },
-                {
-                    "class": "bus",
-                    "num": 0
-                },
-                {
-                    "class": "car",
-                    "num": 0
-                },
-                {
-                    "class": "motor",
-                    "num": 0
-                },
-                {
-                    "class": "person",
-                    "num": 0
-                },
-                {
-                    "class": "rider",
-                    "num": 0
-                },
-                {
-                    "class": "truck",
-                    "num": 0
-                }
-            ]
-        },
-        {
-            "area_id": "juxing2",
-            "car_num": 2,
-            "count_list": [
-                {
-                    "class": "bike",
-                    "num": 0
-                },
-                {
-                    "class": "bus",
-                    "num": 0
-                },
-                {
-                    "class": "car",
-                    "num": 2
-                },
-                {
-                    "class": "motor",
-                    "num": 0
-                },
-                {
-                    "class": "person",
-                    "num": 0
-                },
-                {
-                    "class": "rider",
-                    "num": 0
-                },
-                {
-                    "class": "truck",
-                    "num": 0
                 }
             ]
         }

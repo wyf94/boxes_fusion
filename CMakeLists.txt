@@ -41,10 +41,14 @@ include_directories(
 
 catkin_install_python(PROGRAMS
   node/traffic_count_node.py
+  node/traffic_count_test_node.py
+  node/traffic_count_track_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 install(FILES
   launch/traffic_count.launch
+  launch/traffic_count_test.launch
+  launch/traffic_count_track.launch
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )
