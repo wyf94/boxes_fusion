@@ -1,0 +1,42 @@
+{
+    "reference_point": {
+        "collision_lines": [
+            {
+                "line_points": [
+                    [
+                        903,
+                        776
+                    ],
+                    [
+                        1041,
+                        777
+                    ]
+                ],
+                "name": "zhixian1"
+            }
+        ],
+        "roads": [
+            {
+                "points": [
+                    [
+                        977,
+                        713
+                    ],
+                    [
+                        1081,
+                        719
+                    ],
+                    [
+                        1153,
+                        588
+                    ],
+                    [
+                        1098,
+                        586
+                    ]
+                ],
+                "road_number": "juxing1"
+            }
+        ]
+    }
+}

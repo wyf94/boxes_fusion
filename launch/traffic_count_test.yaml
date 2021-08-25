@@ -12,5 +12,9 @@ bounding_boxes_topic: "bounding_boxes_0"
 # Image topic here
 detect_image_topic: "output_image_nms"
 
+camera_config_path: "/home/nvidia/ros_ws/src/traffic_count/config/config.yaml"
+max_age: 5
+min_hits: 1
+
 show_image: true
 publish_image: true

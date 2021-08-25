@@ -1,5 +1,6 @@
-#!/home/wyf/anaconda3/envs/test/bin/python
+#!/usr/bin/python3
 #!coding=utf-8
+
 
 import rospy
 import numpy as np

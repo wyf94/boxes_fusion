@@ -20,6 +20,8 @@ from sort_track.msg import Tracks as TracksMsg
 from sort_track.msg import BoundingBox
 from sort_track.msg import Target as TargetMsg
 from sort_track.msg import Targets as TargetsMsg
+from traffic_count.msg import BboxCoordinate as BboxCoordinateMsg
+from traffic_count.msg import BboxesCoordinates as BboxesCoordinatesMsg
 from traffic_count.cameratool import CameraTools
 import yaml
 import time
@@ -171,6 +173,7 @@ class Sort_Track(object):
 
         self.tracks_msg = TracksMsg()
         self.targets_msg = TargetsMsg()
+        self.BboxesCoordinates_msg = BboxesCoordinatesMsg()
 
         # 创建Targets类的实例
         self.targets = Targets(self.max_age)
@@ -190,6 +193,10 @@ class Sort_Track(object):
 
         return (cx,cy,fx,fy,h,pitch_angle)
 
+    def pixel2world(self, x, y):
+        world_x, world_y = self.cameratool.pixel2world(x, y)
+        return world_x / 1000, world_y / 1000
+
     def sort_track(self, boxes):
         # 接收到的检测数据
         detections = []
@@ -203,10 +210,12 @@ class Sort_Track(object):
         # 调用跟踪器
         self.trackers = self.tracker.update(self.detections)
 
-        self.tracks_msg = self.publish_data(self.trackers)
-        self.targets_msg = self.publish_targets(self.trackers)
+        # self.tracks_msg = self.publish_data(self.trackers)
+        # self.targets_msg = self.publish_targets(self.trackers)
+        self.BboxesCoordinates_msg = self.publish_BboxesCoordinates(self.trackers)
 
-        return self.tracks_msg, self.targets_msg
+        return self.BboxesCoordinates_msg
+        # return self.tracks_msg, self.targets_msg, self.BboxesCoordinates_msg
 
     
     def publish_data(self,tracks):
@@ -230,7 +239,6 @@ class Sort_Track(object):
             track_msg.bounding_boxes.append(bounding_box_msg)
 
         return track_msg
-    
 
     def publish_targets(self,tracks,is_center=False):
         '''
@@ -270,3 +278,54 @@ class Sort_Track(object):
             targets_msg.data.append(target_msg)
             
         return targets_msg
+
+
+    def publish_BboxesCoordinates(self, tracks, is_center=True):
+        '''
+        发布跟踪后的数据(bounding boxes)
+        发布跟踪后的数据（世界坐标）
+        '''
+        BboxesCoordinates_msg = BboxesCoordinatesMsg()
+        
+        BboxesCoordinates_msg.header.stamp = rospy.Time.now()
+        BboxesCoordinates_msg.header.frame_id = 'sort_track'
+
+        time_stamp = time.time()
+        targets = []
+        for track in tracks:
+            item = np.array(track[:5],dtype='float')
+            center_x = (item[0] + item[2]) / 2
+            # 如果取中心
+            if is_center:
+                center_y = (item[1] + item[3]) / 2
+            # 取最下边
+            else:
+                center_y = item[3]
+            x,y = self.cameratool.pixel2world(center_x,center_y)
+            x = x / 1000
+            y = y / 1000
+
+            targets.append([int(item[4]),x,y,track[5],time_stamp])
+
+        ret_targets = self.targets.update(targets)
+
+        for item in ret_targets:
+            BboxCoordinate_msg = BboxCoordinateMsg()
+            BboxCoordinate_msg.id    = int(item.id)
+            BboxCoordinate_msg.x     = round(item.x,2)
+            BboxCoordinate_msg.y     = round(item.y,2)
+            BboxCoordinate_msg.vx    = round(item.vx,2)
+            BboxCoordinate_msg.vy    = round(item.vy,2)
+            BboxCoordinate_msg.Class = item.Class
+
+            for track in tracks:
+                track_array = np.array(track[:5],dtype='float')
+                if int(track_array[4]) == int(item.id):
+                    BboxCoordinate_msg.xmin  = int(track_array[0])
+                    BboxCoordinate_msg.ymin  = int(track_array[1])
+                    BboxCoordinate_msg.xmax  = int(track_array[2])
+                    BboxCoordinate_msg.ymax  = int(track_array[3])
+                    break
+            BboxesCoordinates_msg.bbox_coordinate.append(BboxCoordinate_msg)
+            
+        return BboxesCoordinates_msg

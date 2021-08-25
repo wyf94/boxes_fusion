@@ -17,6 +17,8 @@ add_message_files(
   FILES
   BoundingBox.msg
   BoundingBoxes.msg
+  BboxCoordinate.msg
+  BboxesCoordinates.msg
 )
 
 # generate_messages(DEPENDENCIES std_msgs )
