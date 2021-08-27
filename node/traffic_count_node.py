@@ -165,7 +165,7 @@ def callback(image, boxes):
 
 def read_json():
     current_dir = os.path.dirname(__file__)
-    f = open(current_dir + "/../json/polygon.json", encoding="UTF-8")
+    f = open(current_dir + "/../json/polygon_chengdu.json", encoding="UTF-8")
     file = json.load(f)
     lines = file['reference_point']['collision_lines']
     polygons = file['reference_point']['roads']

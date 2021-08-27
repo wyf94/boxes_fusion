@@ -32,30 +32,34 @@ def polygon_mask(point_list_first, point_list_second, size):
 
     return polygon_mask_first_and_second,  polygon_color_image
 
-def  line2polygon(line, width, height, size):
+def  line2polygon(line, padding, size, show_image = True):
+    width, height = padding[0], padding[1]
     polygon_0  = [line[0], line[1], [line[1][0] + width, line[1][1] + height], [line[0][0] + width, line[0][1] + height]]
     polygon_1  = [line[0], line[1], [line[1][0] - width, line[1][1] - height], [line[0][0] - width, line[0][1] - height]]
     polygon_value_first = image_mask(polygon_0, 1, size)
     polygon_value_second = image_mask(polygon_1, 2, size)
-    # set the first  polygon to blue
-    blue_color_plate = [255, 0, 0]
-    blue_image = np.array(polygon_value_first * blue_color_plate, np.uint8)
-    # set the first  polygon to yelllow
-    yellow_color_plate = [0, 255, 255]
-    yellow_image = np.array(polygon_value_second * yellow_color_plate, np.uint8)
-
     polygon_mask_first_and_second = polygon_value_first + polygon_value_second
-    polygon_color_image = blue_image + yellow_image
+
+    if show_image:
+        # set the first  polygon to blue
+        blue_color_plate = [255, 0, 0]
+        blue_image = np.array(polygon_value_first * blue_color_plate, np.uint8)
+        # set the first  polygon to yelllow
+        yellow_color_plate = [0, 255, 255]
+        yellow_image = np.array(polygon_value_second * yellow_color_plate, np.uint8)
+        polygon_color_image = blue_image + yellow_image
+    else:
+        polygon_color_image = 0
     
     return polygon_mask_first_and_second,  polygon_color_image
 
 def roi_count(roi_point, list_bboxes, list_classes,  color, size):
     class_num = [0]*len(list_classes)
 
-    roi_value = image_mask(roi_point, 1, size)
+    roi_mask_value = image_mask(roi_point, 1, size)
     # set the roi to red
     color_plate = color
-    roi_color_image = np.array(roi_value * color_plate, np.uint8)
+    roi_color_image = np.array(roi_mask_value * color_plate, np.uint8)
     
     for i in range(0, len(list_bboxes)):
         x1 = list_bboxes[i].xmin
@@ -69,30 +73,28 @@ def roi_count(roi_point, list_bboxes, list_classes,  color, size):
         y = int(y1 + ((y2 - y1) * 0.5))
 
         # 判断车辆（中心点）是否在roi区域
-        if roi_value[y, x] == 1:
+        if roi_mask_value[y, x] == 1:
             cls_index = list_classes.index(cls)
             class_num[cls_index] += 1
 
     return class_num, roi_color_image
 
-def roi_count_queue(roi_point, list_bboxes, list_classes, stop_point, color, size, is_center = False):
+def roi_count_queue(roi_point, list_bboxes, list_classes, stop_point, color, size, is_show_image = True):
     class_num = [0]*len(list_classes)
-    classes_length = [3, 8, 8, 1, 1]
 
-    roi_value = image_mask(roi_point, 1, size)
-    # set the roi to red
-    color_plate = color
-    roi_color_image = np.array(roi_value * color_plate, np.uint8)
+    roi_mask_value = image_mask(roi_point, 1, size)
+
+    if is_show_image:
+        # set the roi to red
+        color_plate = color
+        roi_color_image = np.array(roi_mask_value * color_plate, np.uint8)
+    else:
+        roi_color_image = 0
 
     queue_info = {}
     distances = []
-    roi_id = []
     roi_v = []
 
-    # # 设置roi区域的1，2点为停止线，并选择其中点为停止点
-    # stop_x = int(roi_point[0][0]+roi_point[1][0])
-    # stop_y = int(roi_point[0][1]+roi_point[1][1])
-    
     for i in range(0, len(list_bboxes)):
         track_id = list_bboxes[i].id
         x1 = list_bboxes[i].xmin
@@ -100,29 +102,28 @@ def roi_count_queue(roi_point, list_bboxes, list_classes, stop_point, color, siz
         x2 = list_bboxes[i].xmax
         y2 = list_bboxes[i].ymax
         cls = list_bboxes[i].Class
-
         ground_x = list_bboxes[i].x
         ground_y = list_bboxes[i].y
         vx = list_bboxes[i].vx
         vy = list_bboxes[i].vy
 
-        # 撞线的点(中心点)
-
-        x = int(x1 + ((x2 - x1) * 0.5))
-        if is_center:
-            y = int(y1 + ((y2 - y1) * 0.5))
+        if cls in list_classes:
+            pass
         else:
-            y = int(y2)
+            break
+
+        # 撞线的点(矩形下边的中心点)
+        x = int(x1 + ((x2 - x1) * 0.5))
+        y = int(y2)
 
         # 判断车辆（中心点）是否在roi区域
-        if roi_value[y, x] == 1:
+        if roi_mask_value[y, x] == 1:
             cls_index = list_classes.index(cls)
             class_num[cls_index] += 1
 
             dis = math.sqrt(math.pow(ground_x - stop_point[0], 2) + math.pow(ground_y - stop_point[1], 2))
             v =round(math.sqrt(vx*vx + vy*vy), 2)
             distances.append(dis)
-            roi_id.append(track_id)
             roi_v.append(v)
 
     classified_statistic =[]
@@ -135,8 +136,7 @@ def roi_count_queue(roi_point, list_bboxes, list_classes, stop_point, color, siz
         }
         classified_statistic.append(classified_count)   
     
-
-    if len(distances) > 0:
+    if sum_car > 0:
         max_dis = max(distances)
         min_dis = min(distances)
 
@@ -147,8 +147,6 @@ def roi_count_queue(roi_point, list_bboxes, list_classes, stop_point, color, siz
 
         mean_v = np.mean(roi_v)
         mean_dis = (max_dis - min_dis) / len(distances)
-
-
 
         queue_info = {
             "car_num": sum_car,
@@ -279,23 +277,12 @@ def compute_IOU(rec1,rec2):
         S_cross = (down_row_min-up_row_max)*(right_column_min-left_column_max)
         return S_cross/(S1+S2-S_cross)
 
-def occupancy(tracks_msg, img_bboxes_mask, line, line_occupy_flag, line_occupy_time):
-    width = 0
-    height =  10
-    sum_pixel = 0 
+def occupancy(tracks_msg, line, padding, line_occupy_flag, line_occupy_time):
     l_x1, l_y1, l_x2, l_y2 = line[0][0], line[0][1], line[1][0], line[1][1]
-    rec1 = (l_x1, l_y1, l_x2 + width , l_y2 + height)
-    # # 判断boundingboxes是否与检测线生成的polygon相交
-    # for x in range(x1, x2 + 1 + width ):
-    #     for y in range(y1, y2 + 1 + height):
-    #         if img_bboxes_mask[y,x] >= 1:
-    #             sum_pixel += 1
-    # if sum_pixel > 100:
-    #     occupy_flag = 1
-    # else:
-    #     occupy_flag = 0
+    rec1 = (l_x1, l_y1, l_x2 + padding[0] , l_y2 + padding[1])
     
     occupy_flag = 0
+    # 计算boundingboxes和由线填充的矩形之间的交并比，如果大于0，则相交
     if len(tracks_msg.bbox_coordinate) > 0:
         for i in range(0, len(tracks_msg.bbox_coordinate)):
             track_id = tracks_msg.bbox_coordinate[i].id
@@ -320,8 +307,8 @@ def occupancy(tracks_msg, img_bboxes_mask, line, line_occupy_flag, line_occupy_t
     return line_occupy_flag
 
 
-def traffic_count_track(image, tracks_msg, list_classes,  polygon_mask_first_and_second, first_list, second_list,  
-                                                up_count, down_count, car_head_passtime, car_speed, is_center=False):
+def traffic_count_track(tracks_msg, list_classes,  polygon_mask_first_and_second, first_list, second_list,  
+                                                up_count, down_count, car_head_passtime, car_speed):
     class_num = len(list_classes)
 
     if len(tracks_msg.bbox_coordinate) > 0:
@@ -335,31 +322,19 @@ def traffic_count_track(image, tracks_msg, list_classes,  polygon_mask_first_and
             vx = tracks_msg.bbox_coordinate[i].vx
             vy = tracks_msg.bbox_coordinate[i].vy  
 
-            if (cls in list_classes):
+            if cls in list_classes:
                 cls_index = list_classes.index(cls)
+                pass
             else:
                 break
-
-            # #  判断boundingboxes是否与检测线相交，如果相交则为有车存在，并记录有车->无车，无车->有车的时间点
-            # line_center_x = int(line[0][0] + ((line[1][0] - line[0][0]) * 0.5))
-            # line_center_y = int(line[0][1] + ((line[1][1] - line[0][1]) * 0.5))
-            # print(line_center_x, line_center_y)
-            # if img_bboxes_mask[line_center_y, line_center_x] >= 0:
-            #     line_occupy = 1
-            # print("line_occupy {0}: {1}  track_id:{2}".format(i, line_occupy, track_id))
-            # occupy_flag |= line_occupy
             
-            # 撞线的点(中心点)
+            # 撞线的点(矩形下方中心点)
             x = int(x1 + ((x2 - x1) * 0.5))
-            if is_center:
-                y = int(y1 + ((y2 - y1) * 0.5))
-            else:
-                y = int(y2)
-                y2 = int(y1)
+            y = int(y2)
 
             # 判断目标在是否在多边形0和1内
             if polygon_mask_first_and_second[y,x]==1 or polygon_mask_first_and_second[y, x] == 3:
-                # 记录通过第一个polygon的时间戳以及数度
+                # 记录通过第一个polygon的时间戳以及速度
                 car_head_passtime.append(tracks_msg.header.stamp.to_sec())
                 car_speed.append(round(math.sqrt(vx*vx + vy*vy), 2))
 
@@ -371,8 +346,8 @@ def traffic_count_track(image, tracks_msg, list_classes,  polygon_mask_first_and
                 if track_id in second_list:
                     # 2--->1方向 +1
                     down_count[cls_index] += 1
-                    print('2--->1 count:', down_count, ', 2--->1 id:', second_list)
-                    # 删除 黄polygon list 中的此id
+                    # print('2--->1 count:', down_count, ', 2--->1 id:', second_list)
+                    # 删除 第二个polygon list 中的此id
                     second_list.remove(track_id)
 
 
@@ -385,21 +360,10 @@ def traffic_count_track(image, tracks_msg, list_classes,  polygon_mask_first_and
                 if track_id in first_list:
                     #  1--->2 方向 +1
                     up_count[cls_index] += 1
-                    print('1--->2 count:', up_count, ', 1--->2  id:', first_list)
-                    # 删除 蓝polygon list 中的此id
+                    # print('1--->2 count:', up_count, ', 1--->2  id:', first_list)
+                    # 删除 第一个polygon list 中的此id
                     first_list.remove(track_id)
         pass
-
-        # print("occupy_flag: ", occupy_flag)
-        # if (line_occupy_flag == 0 and occupy_flag ==1) or (line_occupy_flag == 1 and occupy_flag == 0):
-        #     line_occupy_time.append(tracks_msg.header.stamp.to_sec())
-        
-        # if occupy_flag:
-        #     line_occupy_flag = 1
-        #     print("-----------------------------------------------")
-        # else:
-        #     line_occupy_flag = 0
-        # print("line_occupy_flag2: ", line_occupy_flag)
 
         # ----------------------清除无用id----------------------
         list_overlapping_all = second_list + first_list

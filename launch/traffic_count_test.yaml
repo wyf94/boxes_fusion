@@ -16,5 +16,8 @@ camera_config_path: "/home/nvidia/ros_ws/src/traffic_count/config/config.yaml"
 max_age: 5
 min_hits: 1
 
-show_image: true
+period: 20
+is_CompressedImage: False
+
+show_image: false
 publish_image: true

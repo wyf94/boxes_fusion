@@ -250,7 +250,7 @@ if __name__ == '__main__':
     list_boxes = []
     max_age = 5
     min_hits = 1
-    camera_config_path = '/home/wyf/ros_ws/src/traffic_count/config/config.yaml'
+    camera_config_path = "/home/nvidia/ros_ws/src/traffic_count/config/config.yaml"
 
     tracker = Sort_Track(max_age, min_hits, camera_config_path)
 
@@ -267,8 +267,8 @@ if __name__ == '__main__':
         count = count + 1
     
     # 每60秒更新一次周期统计信息，并把统计信息置零
-    # t = RepeatingTimer(10.0, dump_json)
-    # t.start()
+    t = RepeatingTimer(5.0, dump_json)
+    t.start()
 
     show_image = rospy.get_param('/traffic_count/show_image')
     publish_image = rospy.get_param('/traffic_count/publish_image')

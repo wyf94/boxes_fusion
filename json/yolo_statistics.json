@@ -1,81 +1,11 @@
 {
-    "area_statistical_info": [
-        {
-            "area_id": "juxing1",
-            "car_num": 1,
-            "count_list": [
-                {
-                    "class": "bike",
-                    "num": 0
-                },
-                {
-                    "class": "bus",
-                    "num": 0
-                },
-                {
-                    "class": "car",
-                    "num": 1
-                },
-                {
-                    "class": "motor",
-                    "num": 0
-                },
-                {
-                    "class": "person",
-                    "num": 0
-                },
-                {
-                    "class": "rider",
-                    "num": 0
-                },
-                {
-                    "class": "truck",
-                    "num": 0
-                }
-            ]
-        },
-        {
-            "area_id": "juxing2",
-            "car_num": 1,
-            "count_list": [
-                {
-                    "class": "bike",
-                    "num": 0
-                },
-                {
-                    "class": "bus",
-                    "num": 0
-                },
-                {
-                    "class": "car",
-                    "num": 1
-                },
-                {
-                    "class": "motor",
-                    "num": 0
-                },
-                {
-                    "class": "person",
-                    "num": 0
-                },
-                {
-                    "class": "rider",
-                    "num": 0
-                },
-                {
-                    "class": "truck",
-                    "num": 0
-                }
-            ]
-        }
-    ],
     "period_statistical_info": [
         {
             "channel_id": "zhixian1",
             "total_car": 0.0,
             "classified_statistic": [
                 {
-                    "class": "bike",
+                    "class": "car",
                     "num": 0.0
                 },
                 {
@@ -83,33 +13,28 @@
                     "num": 0.0
                 },
                 {
-                    "class": "car",
+                    "class": "truck",
+                    "num": 0.0
+                },
+                {
+                    "class": "bike",
                     "num": 0.0
                 },
                 {
                     "class": "motor",
                     "num": 0.0
-                },
-                {
-                    "class": "person",
-                    "num": 0.0
-                },
-                {
-                    "class": "rider",
-                    "num": 0.0
-                },
-                {
-                    "class": "truck",
-                    "num": 0.0
                 }
-            ]
+            ],
+            "ave_car_head_dis": 0,
+            "ave_car_len": 0,
+            "ave_car_speed": 0
         },
         {
             "channel_id": "zhixian2",
-            "total_car": 1.0,
+            "total_car": 0.0,
             "classified_statistic": [
                 {
-                    "class": "bike",
+                    "class": "car",
                     "num": 0.0
                 },
                 {
@@ -117,26 +42,93 @@
                     "num": 0.0
                 },
                 {
-                    "class": "car",
-                    "num": 1.0
+                    "class": "truck",
+                    "num": 0.0
+                },
+                {
+                    "class": "bike",
+                    "num": 0.0
                 },
                 {
                     "class": "motor",
                     "num": 0.0
+                }
+            ],
+            "ave_car_head_dis": 0,
+            "ave_car_len": 0,
+            "ave_car_speed": 0
+        }
+    ],
+    "area_statistical_info": [
+        {
+            "area_id": "juxing1",
+            "car_num": 2,
+            "count_list": [
+                {
+                    "class": "car",
+                    "num": 2
                 },
                 {
-                    "class": "person",
-                    "num": 0.0
-                },
-                {
-                    "class": "rider",
-                    "num": 0.0
+                    "class": "bus",
+                    "num": 0
                 },
                 {
                     "class": "truck",
-                    "num": 0.0
+                    "num": 0
+                },
+                {
+                    "class": "bike",
+                    "num": 0
+                },
+                {
+                    "class": "motor",
+                    "num": 0
                 }
-            ]
+            ],
+            "ave_car_speed": 36.34,
+            "car_distribute": 76.93,
+            "head_car_pos": 279.73,
+            "head_car_speed": 27.86,
+            "tail_car_pos": 433.58,
+            "tail_car_speed": 44.83,
+            "car_count": 2,
+            "is_queue": "False",
+            "queue_len": 0
+        },
+        {
+            "area_id": "juxing2",
+            "car_num": 1,
+            "count_list": [
+                {
+                    "class": "car",
+                    "num": 1
+                },
+                {
+                    "class": "bus",
+                    "num": 0
+                },
+                {
+                    "class": "truck",
+                    "num": 0
+                },
+                {
+                    "class": "bike",
+                    "num": 0
+                },
+                {
+                    "class": "motor",
+                    "num": 0
+                }
+            ],
+            "ave_car_speed": 5.74,
+            "car_distribute": 0.0,
+            "head_car_pos": 322.24,
+            "head_car_speed": 5.74,
+            "tail_car_pos": 322.24,
+            "tail_car_speed": 5.74,
+            "car_count": 1,
+            "is_queue": "False",
+            "queue_len": 0
         }
     ]
 }

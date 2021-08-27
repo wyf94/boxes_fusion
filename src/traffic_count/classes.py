@@ -5,7 +5,23 @@ CLASSES_LIST = [
     'motor',
     'person',
     'rider',
+    'truck'
+]
+
+TRACK_CLASSES_LIST = [
+    'car',
+    'bus',
     'truck',
+    'bike',
+    'motor'
+]
+
+TRACK_CLASSES_LEN = [
+    3, 
+    8, 
+    8,
+    1,
+    1
 ]
 
 def get_cls_dict(category_num):
