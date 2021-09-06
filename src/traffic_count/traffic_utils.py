@@ -80,7 +80,7 @@ def roi_count(roi_point, list_bboxes, list_classes,  color, size):
 
     return class_num, roi_color_image
 
-def roi_count_queue(roi_point, list_bboxes, list_classes, stop_point, color, size, is_show_image = False):
+def roi_count_queue(roi_point, list_bboxes, list_classes, stop_point, color, size, queue_speed, is_show_image = False):
     class_num = [0]*len(list_classes)
 
     roi_mask_value = image_mask(roi_point, 1, size)
@@ -161,7 +161,7 @@ def roi_count_queue(roi_point, list_bboxes, list_classes, stop_point, color, siz
             "tail_car_speed": round(tail_v, 2),
         }
 
-        if mean_v <= 5:
+        if mean_v < queue_speed:
             queue_up_info = {
                 "queue_len": round(max_dis, 2),
                 "head_car_pos": round(min_dis, 2),
@@ -306,9 +306,6 @@ def occupancy(tracks_msg, line, padding, line_occupy_flag, line_occupy_time):
                 occupy_flag |= 1
 
     #  判断boundingboxes是否与检测线相交，如果相交则为有车存在，并记录有车->无车，无车->有车的时间点
-    # print("line_occupy_flag: ", line_occupy_flag)
-    # print("occupy_flag: ", occupy_flag)
-
     if (line_occupy_flag == 0 and occupy_flag ==1) or (line_occupy_flag == 1 and occupy_flag == 0):
         line_occupy_time.append(tracks_msg.header.stamp.to_sec())
     #

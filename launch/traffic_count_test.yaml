@@ -18,6 +18,11 @@ min_hits: 1
 
 period: 60
 is_CompressedImage: False
+polygon_path: "/home/nvidia/ros_ws/src/traffic_count/json/polygon_chengdu_test.json"
+url: "http://10.31.200.171:8001/api/dataView/create" 
+size: [2448, 2048] # size(height, width)
+padding: [0, 15] # line填充为矩形的(weight, heigeht)
+queue_speed: 5 # 排队最大速度，即当区域内平均速度小于排队最大速度，视为排队
 
 show_image: true
 publish_image: true

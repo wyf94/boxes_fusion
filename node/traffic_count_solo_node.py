@@ -63,9 +63,9 @@ def get_camera_config(config_path):
 
     return (cx,cy,fx,fy,h,pitch_angle)
 
-def read_json():
-    current_dir = os.path.dirname(__file__)
-    f = open(current_dir + "/../json/polygon_chengdu_test.json", encoding="UTF-8")
+def read_json(polygon_path):
+    # current_dir = os.path.dirname(__file__)
+    f = open(polygon_path, encoding="UTF-8")
     file = json.load(f)
     lines = file['reference_point']['collision_lines']
     polygons = file['reference_point']['roads']
@@ -73,15 +73,10 @@ def read_json():
 
 def dump_json():
     global Publisher_json, json_path, Line_statistics, up_count, down_count, dump_num, lock, track_time, \
-                  car_speed, car_head_passtime, line_occupy_flag, line_occupy_time, track_classes_list, pub_header
+                  car_speed, car_head_passtime, line_occupy_flag, line_occupy_time, track_classes_list, pub_header, url
     # 周期性统计各个类别穿过每条线的情况
-    print("--------------------------------------------------")
-    print("car_speed: ", car_speed)
-    print("car_head_passtime: ", car_head_passtime)
-    print("line_occupy_time: ", line_occupy_time)
-    print("--------------------------------------------------")
     Line_statistics = []
-    url = "http://10.31.200.171:8001/api/dataView/create" 
+    # url = "http://10.31.200.171:8001/api/dataView/create" 
     for index in range(0, len(multi_line)):
         # 分类统计
         classified_statistic =[]
@@ -179,10 +174,10 @@ def dump_json():
 def callback(BboxesCoordinates_msg):
     # start  = time.time()
     global frame_count, up_count, down_count, blue_list, yellow_list, classes_list, lines, polygons, multi_roi, multi_line, roi_num,json_path, Publisher_json, Line_statistics
-    global is_show_image, publish_image, tracker, car_speed,car_head_passtime, line_occupy_flag, line_occupy_time, padding, track_time,size,url, pub_header
+    global is_show_image, publish_image, tracker, car_speed,car_head_passtime, line_occupy_flag, line_occupy_time, padding, track_time,size,url, pub_header, queue_speed
 
     t1 = time.time()
-    # print("sub frame: ", frame_count)
+    print("sub frame: ", frame_count)
 
     frame_count += 1
 
@@ -203,11 +198,10 @@ def callback(BboxesCoordinates_msg):
         stop_y = int(multi_roi[index][0][1] + multi_roi[index][1][1])
         ground_stop_x, ground_stop_y = cameratool.pixel2world(stop_x, stop_y)
         stop_point = (ground_stop_x/1000, ground_stop_y/1000)
-        time1 = time.time()
+
         roi_num[index], roi_color_image, area_info, queue_info = utils.roi_count_queue(multi_roi[index], BboxesCoordinates_msg.bbox_coordinate, 
-                                                                                                                                track_classes_list,  stop_point, roi_color, size, is_show_image)                                                    
-        time2= time.time()
-        print("one for time: ", (time2 - time1)*1000)
+                                                                                                                                track_classes_list,  stop_point, roi_color, size, queue_speed, is_show_image)                                                    
+
         area_json = {
             'area_id': polygons[index]['road_number'], 
             'car_num': 0,
@@ -224,15 +218,14 @@ def callback(BboxesCoordinates_msg):
             "queue_len": 0,
             "head_car_pos": 0,
             "tail_car_pos": 0,
-            "car_count": random.randint(2,10)
+            "car_count": 0
             }
         area_json.update(area_info)
-        # queue_up_info.update(queue_info)
+        queue_up_info.update(queue_info)
         ROI_queue.append(queue_up_info)
         ROI_statistics.append(area_json)
-    print("+++++++++++++++++++++++++++++++++")
-    print('ROI_statistics:',ROI_statistics)
-
+    # print("+++++++++++++++++++++++++++++++++")
+    # print('ROI_statistics:',ROI_statistics)
     r2 = time.time()
 
     # lock
@@ -248,13 +241,10 @@ def callback(BboxesCoordinates_msg):
     lock.release()
 
     p1 = time.time()
+    # 删除周期更新信息
     if "period_statistical_info" in Publisher_json:
         del Publisher_json["period_statistical_info"]
-
-    # print("=========================================")
-    # print("Publisher_json: ", Publisher_json)
-    # print("=========================================")
-
+    # 推送区域信息到前端
     headers = {'Content-Type': 'application/json'}
     response = requests.post(url,headers = headers, data = json.dumps(Publisher_json))
     p2 = time.time()
@@ -262,13 +252,6 @@ def callback(BboxesCoordinates_msg):
     l1 = time.time()
     # 各个类别穿过每条线的统计情况
     Line_statistics = []
-    # print("=========================")
-    # print("car_speed: ", car_speed)
-    # print("car_head_passtime: ", car_head_passtime)
-    # print("line_occupy_flag: ", line_occupy_flag)
-    # print("line_occupy_time: ", line_occupy_time)
-    # print("=========================")
-
     for index in range(0, len(multi_line)):
         # 判断line中点加上padding之后是否超出图片范围
         for i in range(0, 2):
@@ -277,28 +260,18 @@ def callback(BboxesCoordinates_msg):
             if multi_line[index][i][1]+padding[1] >= size[0] or multi_line[index][i][1]+padding[1] <= 0:
                 print(" The point of lines out off range or padding out off range")
 
-            # 周期性统计各个类别穿过每条线的情况
-        
+        # 周期性统计各个类别穿过每条线的情况
         polygon_mask_blue_and_yellow, polygon_color_image = utils.line2polygon(multi_line[index], padding, size, is_show_image)
         up_count[index], down_count[index] = utils.traffic_count_track(BboxesCoordinates_msg, track_classes_list,  polygon_mask_blue_and_yellow, 
                                                                 blue_list[index], yellow_list[index],  up_count[index], down_count[index], car_head_passtime[index], car_speed[index])
                                                             
-        # 
+        # 计算occupancy
         line_occupy_flag[index] = utils.occupancy(BboxesCoordinates_msg,  multi_line[index], padding, line_occupy_flag[index], line_occupy_time[index])
-
-        # print("=========================")
-        # print("car_speed: ", car_speed)
-        # print("car_head_passtime: ", car_head_passtime)
-        # print("line_occupy_flag: ", line_occupy_flag)
-        # print("line_occupy_time: ", line_occupy_time)
-        # print("=========================")
-
     l2 = time.time()
-
 
     t2 = time.time()
     print("roi time: ", (r2 - r1)*1000)
-    print("Publisher time: ", (p2 - p1)*1000)
+    print("pub time: ", (p2 - p1)*1000)
     print("line time: ", (l2 - l1)*1000)
     print("run time: ", (t2 - t1)*1000)
     
@@ -313,6 +286,7 @@ if __name__ == '__main__':
 
     current_dir = os.path.dirname(__file__)
     json_path = os.path.join(current_dir + "/../json/yolo_statistics.json")
+    polygon_path = rospy.get_param('/traffic_count/polygon_path')
 
     is_show_image = rospy.get_param('/traffic_count/show_image')
     publish_image = rospy.get_param('/traffic_count/publish_image')
@@ -327,13 +301,17 @@ if __name__ == '__main__':
     is_CompressedImage = rospy.get_param('/traffic_count/is_CompressedImage')
     size = rospy.get_param('/traffic_count/size')
     size = (int(size[1]), int(size[0]))
+    padding = rospy.get_param('/traffic_count/padding')
+    queue_speed = rospy.get_param('/traffic_count/queue_speed')
+    url = rospy.get_param('/traffic_count/url')
+    polygon_path = rospy.get_param('/traffic_count/polygon_path')
 
     classes_list = CLASSES_LIST
     track_classes_list = TRACK_CLASSES_LIST
     track_classes_len = TRACK_CLASSES_LEN
 
     # 读取josn文件里的lines, polygons
-    lines, polygons = read_json()
+    lines, polygons = read_json(polygon_path)
     multi_line = [[0] for i in range(len(lines))]
     multi_roi = [[0] for i in range(len(polygons))]
     count = 0
@@ -363,7 +341,6 @@ if __name__ == '__main__':
     roi_num = [[0] for i in range(len(polygons))]
 
     # lines 周期统计参数变量    
-    padding = (5, 5) # line填充为矩形的(weight, heigeht)
     Line_statistics = []
     up_count = np.zeros((len(lines),  len(track_classes_list)))
     down_count = np.zeros((len(lines),  len(track_classes_list)))
@@ -384,7 +361,7 @@ if __name__ == '__main__':
     # 实例化CameraTools
     cameratool = CameraTools(cx,cy,fx,fy,h,pitch_angle)
 
-    url = "http://10.31.200.171:8001/api/dataView/create" 
+    # url = "http://10.31.200.171:8001/api/dataView/create" 
         
     # tracker = Sort_Track(max_age, min_hits, camera_config_path)
 
