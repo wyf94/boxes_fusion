@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import math
+import time 
 
 
 def image_mask(list_point, color_value, size):
@@ -79,7 +80,7 @@ def roi_count(roi_point, list_bboxes, list_classes,  color, size):
 
     return class_num, roi_color_image
 
-def roi_count_queue(roi_point, list_bboxes, list_classes, stop_point, color, size, is_show_image = True):
+def roi_count_queue(roi_point, list_bboxes, list_classes, stop_point, color, size, is_show_image = False):
     class_num = [0]*len(list_classes)
 
     roi_mask_value = image_mask(roi_point, 1, size)
@@ -91,7 +92,8 @@ def roi_count_queue(roi_point, list_bboxes, list_classes, stop_point, color, siz
     else:
         roi_color_image = 0
 
-    queue_info = {}
+    area_info = {}
+    queue_up_info = {}
     distances = []
     roi_v = []
 
@@ -148,7 +150,7 @@ def roi_count_queue(roi_point, list_bboxes, list_classes, stop_point, color, siz
         mean_v = np.mean(roi_v)
         mean_dis = (max_dis - min_dis) / len(distances)
 
-        queue_info = {
+        area_info = {
             "car_num": sum_car,
             "count_list": classified_statistic,
             "ave_car_speed": round(mean_v, 2),
@@ -157,15 +159,23 @@ def roi_count_queue(roi_point, list_bboxes, list_classes, stop_point, color, siz
             "head_car_speed": round(head_v, 2),
             "tail_car_pos": round(max_dis, 2),
             "tail_car_speed": round(tail_v, 2),
-            "car_count": len(distances)
         }
 
         if mean_v <= 5:
-            queue_info.update({"is_queue": "True", "queue_len": round(max_dis, 2)})
+            queue_up_info = {
+                "queue_len": round(max_dis, 2),
+                "head_car_pos": round(min_dis, 2),
+                "tail_car_pos": round(max_dis, 2),
+                "car_count": len(distances)
+                }
         else:
-            queue_info.update({"is_queue": "False", "queue_len": 0})
-
-    return class_num, roi_color_image,  queue_info
+            queue_up_info = {
+                "queue_len": 0,
+                "head_car_pos": 0,
+                "tail_car_pos": 0,
+                "car_count": 0
+                }
+    return class_num, roi_color_image,  area_info, queue_up_info
 
 def image_count(list_bboxes, list_classes):
     class_num = [0]*len(list_classes)
@@ -296,6 +306,9 @@ def occupancy(tracks_msg, line, padding, line_occupy_flag, line_occupy_time):
                 occupy_flag |= 1
 
     #  判断boundingboxes是否与检测线相交，如果相交则为有车存在，并记录有车->无车，无车->有车的时间点
+    # print("line_occupy_flag: ", line_occupy_flag)
+    # print("occupy_flag: ", occupy_flag)
+
     if (line_occupy_flag == 0 and occupy_flag ==1) or (line_occupy_flag == 1 and occupy_flag == 0):
         line_occupy_time.append(tracks_msg.header.stamp.to_sec())
     #
@@ -303,6 +316,10 @@ def occupancy(tracks_msg, line, padding, line_occupy_flag, line_occupy_time):
         line_occupy_flag = 1
     else:
         line_occupy_flag = 0
+
+    # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    # print("line_occupy_time: ", line_occupy_time)
+    # print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
     return line_occupy_flag
 
@@ -335,9 +352,6 @@ def traffic_count_track(tracks_msg, list_classes,  polygon_mask_first_and_second
             # 判断目标在是否在多边形0和1内
             if polygon_mask_first_and_second[y,x]==1 or polygon_mask_first_and_second[y, x] == 3:
                 # 记录通过第一个polygon的时间戳以及速度
-                car_head_passtime.append(tracks_msg.header.stamp.to_sec())
-                car_speed.append(round(math.sqrt(vx*vx + vy*vy), 2))
-
                 # 如果撞 第一个 polygon
                 if track_id not in first_list:
                     first_list.append(track_id)
@@ -346,7 +360,11 @@ def traffic_count_track(tracks_msg, list_classes,  polygon_mask_first_and_second
                 if track_id in second_list:
                     # 2--->1方向 +1
                     down_count[cls_index] += 1
-                    # print('2--->1 count:', down_count, ', 2--->1 id:', second_list)
+                    # 记录通过第一个polygon的时间戳以及速度
+                    car_head_passtime.append(tracks_msg.header.stamp.to_sec())
+                    car_speed.append(round(math.sqrt(vx*vx + vy*vy), 2))
+                    print('2--->1 count:', down_count, ', 2--->1 id:', second_list)
+                    print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
                     # 删除 第二个polygon list 中的此id
                     second_list.remove(track_id)
 
@@ -360,7 +378,11 @@ def traffic_count_track(tracks_msg, list_classes,  polygon_mask_first_and_second
                 if track_id in first_list:
                     #  1--->2 方向 +1
                     up_count[cls_index] += 1
-                    # print('1--->2 count:', up_count, ', 1--->2  id:', first_list)
+                    # 记录通过第一个polygon的时间戳以及速度
+                    car_head_passtime.append(tracks_msg.header.stamp.to_sec())
+                    car_speed.append(round(math.sqrt(vx*vx + vy*vy), 2))
+                    print('1--->2 count:', up_count, ', 1--->2  id:', first_list)
+                    print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
                     # 删除 第一个polygon list 中的此id
                     first_list.remove(track_id)
         pass
@@ -390,6 +412,10 @@ def traffic_count_track(tracks_msg, list_classes,  polygon_mask_first_and_second
         # 如果图像中没有任何的bbox，则清空list
         first_list.clear()
         second_list.clear()
+    # print("********************************************")
+    # print("car_head_passtime: ", car_head_passtime)
+    # print("car_speed: ", car_speed)
+    # print("********************************************")
 
     return up_count, down_count
 

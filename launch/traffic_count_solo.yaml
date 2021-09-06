@@ -8,7 +8,7 @@
 
 # Bounding boxes topic here
 # bounding_boxes_topic: "bounding_boxes_nms"
-bounding_boxes_topic: "bounding_boxes_0"
+bounding_boxes_topic: "/sort_track/BoundingboxesCoordinates"
 # Image topic here
 detect_image_topic: "output_image_nms"
 
@@ -18,6 +18,8 @@ min_hits: 1
 
 period: 60
 is_CompressedImage: False
+# size(height, width)
+size: [2448, 2048]
 
-show_image: true
+show_image: false
 publish_image: true
