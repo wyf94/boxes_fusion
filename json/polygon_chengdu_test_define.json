@@ -2,7 +2,7 @@
     "reference_point": {
         "collision_lines": [
             {
-                "line_points": [
+                "points": [
                     [
                         1179,
                         772
@@ -12,10 +12,10 @@
                         772
                     ]
                 ],
-                "name": "zhixian1"
+                "road_number": "zhixian1"
             },
             {
-                "line_points": [
+                "points": [
                     [
                         1317,
                         724
@@ -25,7 +25,7 @@
                         728
                     ]
                 ],
-                "name": "zhixian2"
+                "road_number": "zhixian2"
             }
         ],
         "roads": [
@@ -46,6 +46,16 @@
                     [
                         1098,
                         586
+                    ]
+                ],
+                "stop_line": [                    
+                    [
+                        977,
+                        713
+                    ],
+                    [
+                        1081,
+                        719
                     ]
                 ],
                 "road_number": "juxing1"
@@ -69,6 +79,28 @@
                         719
                     ]
                 ],
+                "stop_line": {
+                    "pixel": [
+                        [
+                            1219,
+                            586
+                        ],
+                        [
+                            1276,
+                            589
+                        ]
+                    ],
+                    "world": [
+                        [
+                            -2.892080091121824, 
+                            -323.3383040974237
+                        ],
+                        [
+                            -11.068849854342155, 
+                            -341.809929045863
+                        ]
+                    ]
+                },
                 "road_number": "juxing2"
             }
         ]

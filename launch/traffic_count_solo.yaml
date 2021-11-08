@@ -17,5 +17,5 @@ size: [2448, 2048] # size(height, width)
 padding: [0, 20] # line填充为矩形的(weight, heigeht)
 queue_speed: 5 # 排队最大速度，即当区域内平均速度小于排队最大速度，视为排队
 
-show_image: false
+show_image: true
 publish_image: true

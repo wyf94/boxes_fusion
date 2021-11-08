@@ -106,7 +106,7 @@ def callback(image, boxes):
         # queue_up_info.update(queue_info)
         ROI_queue.append(queue_up_info)
         ROI_statistics.append(area_json)
-    print('ROI_statistics:',ROI_statistics)
+    # print('ROI_statistics:',ROI_statistics)
     r2 = time.time()
 
     # lock

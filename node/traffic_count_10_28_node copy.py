@@ -30,13 +30,18 @@ from sort_track.msg import Targets as TargetsMsg
 from traffic_count.msg import BboxCoordinate as BboxCoordinateMsg
 from traffic_count.msg import BboxesCoordinates as BboxesCoordinatesMsg
 
+from sort_track.msg import Tracks as TracksMsg
+from sort_track.msg import BoundingBox
+from sort_track.msg import Target as TargetMsg
+from sort_track.msg import Targets as TargetsMsg
+
 import message_filters
 from sensor_msgs.msg import Image, CameraInfo, CompressedImage
 
 
 from traffic_count.cameratool import CameraTools
 # import traffic_count.utils as utils
-import traffic_count.traffic_utils as utils
+import traffic_count.traffic_utils_10_28 as utils
 import sort.sort as sort
 from traffic_count.sort_track_wyf import Sort_Track
 # from traffic_count.yolo_classes import CLASSES_LIST
@@ -154,7 +159,7 @@ def dump_json():
     lock.release()
 
     print("-------------------------------------------")
-    print("Publisher_json: ", Publisher_json)
+    # print("Publisher_json: ", Publisher_json)
     print("-------------------------------------------")
 
     # headers = {'Content-Type': 'application/json'}
@@ -171,21 +176,32 @@ def dump_json():
 
 
 
-def callback(BboxesCoordinates_msg):
+def callback(image,TargetsMsg):
     # start  = time.time()
     global frame_count, up_count, down_count, blue_list, yellow_list, classes_list, lines, polygons, multi_roi, multi_line, roi_num,json_path, Publisher_json, Line_statistics
     global is_show_image, publish_image, tracker, car_speed,car_head_passtime, line_occupy_flag, line_occupy_time, padding, track_time,size,url, pub_header, queue_speed
-
+    global multi_stopline_pixel, multi_stopline_world
     t1 = time.time()
     print("sub frame: ", frame_count)
 
     frame_count += 1
 
-    track_time = BboxesCoordinates_msg.header.stamp.to_sec()
+    # 读取image msg并转换为opencv格式
+    bridge = CvBridge()
+
+    if is_CompressedImage:
+        cv_image = bridge.compressed_imgmsg_to_cv2(image, "bgr8")
+    else:
+        cv_image = bridge.imgmsg_to_cv2(image,"bgr8")
+    # size = (cv_image.shape[0], cv_image.shape[1])
+    print("size: ", (cv_image.shape[0], cv_image.shape[1]))
+
+
+    track_time = TargetsMsg.header.stamp.to_sec()
     pub_header.update({"time_stamp": int(track_time)})
 
     # 整张图像的各个类别数量
-    classes_num = utils.image_count(BboxesCoordinates_msg.bbox_coordinate, classes_list)
+    classes_num = utils.image_count(TargetsMsg.data, classes_list)
 
     r1 = time.time()
     # 每个roi区域的各个类别数量
@@ -193,15 +209,45 @@ def callback(BboxesCoordinates_msg):
     ROI_statistics = []
     ROI_queue = []
     for index in range(0, len(multi_roi)):
+
         # 设置roi区域的1，2点为停止线，并选择其中点为停止点
-        stop_x = int(multi_roi[index][0][0]+multi_roi[index][1][0])
-        stop_y = int(multi_roi[index][0][1] + multi_roi[index][1][1])
-        ground_stop_x, ground_stop_y = cameratool.pixel2world(stop_x, stop_y)
-        stop_point = (ground_stop_x/1000, ground_stop_y/1000)
+        # stop_x = int(multi_roi[index][0][0]+multi_roi[index][1][0])
+        # stop_y = int(multi_roi[index][0][1] + multi_roi[index][1][1])
+        # ground_stop_x, ground_stop_y = cameratool.pixel2world(stop_x * 0.5, stop_y * 0.5)
+        # stop_point = (ground_stop_x/1000, ground_stop_y/1000)
+        # print("index:", index)
+        # # print("multi_roi", multi_roi[index])
+        # # print("zhongdian: ", [stop_x, stop_y])
+        # print("stop_point1: ", stop_point)
 
-        roi_num[index], roi_color_image, area_info, queue_info = utils.roi_count_queue(multi_roi[index], BboxesCoordinates_msg.bbox_coordinate, 
-                                                                                                                                track_classes_list,  stop_point, roi_color, size, queue_speed, is_show_image)                                                    
+        stop_x = (multi_stopline_world[index][0][0] + multi_stopline_world[index][1][0]) * 0.5
+        stop_y = (multi_stopline_world[index][0][1] + multi_stopline_world[index][1][1]) * 0.5
+        stop_point = (stop_x, stop_y)
+        # print("multi_stopline_world", multi_stopline_world)
+        # print("multi_stopline_world index", multi_stopline_world[index])
+        print("stop_point2: ", stop_point)
 
+        # x1, y1 = cameratool.pixel2world(977, 713)
+        # point_1 = (x1/1000, y1/1000)
+        # print("point_1: ", point_1)
+
+        # x2, y2 = cameratool.pixel2world(1081, 719)
+        # point_2 = (x2/1000, y2/1000)
+        # print("point_2: ", point_2)
+
+        # x3, y3 = cameratool.pixel2world(1219, 586)
+        # point_3 = (x3/1000, y3/1000)
+        # print("point_3: ", point_3)
+
+        # x4, y4 = cameratool.pixel2world(1276, 589)
+        # point_4 = (x4/1000, y4/1000)
+        # print("point_4: ", point_4)
+        
+        roi_num[index], roi_color_image, area_info, queue_info = utils.roi_count_queue(multi_roi[index], TargetsMsg.data, 
+                                                                    track_classes_list,  stop_point, roi_color, size, queue_speed, is_show_image)                                                    
+
+        if is_show_image:
+            cv_image = cv2.add(cv_image, roi_color_image)
         area_json = {
             'area_id': polygons[index]['road_number'], 
             'car_num': 0,
@@ -262,18 +308,68 @@ def callback(BboxesCoordinates_msg):
 
         # 周期性统计各个类别穿过每条线的情况
         polygon_mask_blue_and_yellow, polygon_color_image = utils.line2polygon(multi_line[index], padding, size, is_show_image)
-        up_count[index], down_count[index] = utils.traffic_count_track(BboxesCoordinates_msg, track_classes_list,  polygon_mask_blue_and_yellow, 
+        up_count[index], down_count[index] = utils.traffic_count(TargetsMsg, size,  track_classes_list,  polygon_mask_blue_and_yellow, 
                                                                 blue_list[index], yellow_list[index],  up_count[index], down_count[index], car_head_passtime[index], car_speed[index])
                                                             
         # 计算occupancy
-        line_occupy_flag[index] = utils.occupancy(BboxesCoordinates_msg,  multi_line[index], padding, line_occupy_flag[index], line_occupy_time[index])
+        line_occupy_flag[index] = utils.occupancy(TargetsMsg,  multi_line[index], padding, line_occupy_flag[index], line_occupy_time[index])
+
+        if is_show_image:
+            cv_image = cv2.add(cv_image, polygon_color_image)
     l2 = time.time()
 
     t2 = time.time()
-    print("roi time: ", (r2 - r1)*1000)
-    print("pub time: ", (p2 - p1)*1000)
-    print("line time: ", (l2 - l1)*1000)
-    print("run time: ", (t2 - t1)*1000)
+    # print("roi time: ", (r2 - r1)*1000)
+    # print("pub time: ", (p2 - p1)*1000)
+    # print("line time: ", (l2 - l1)*1000)
+    # print("run time: ", (t2 - t1)*1000)
+    if is_show_image:
+        # 在图像上画出每个bounding_boxes
+        point_radius=3
+        # for item_bbox in list_track:
+        for i in range(0, len(TargetsMsg.data)):
+            track_id = TargetsMsg.data[i].id
+            x1 = TargetsMsg.data[i].xmin
+            y1 = TargetsMsg.data[i].ymin
+            x2 = TargetsMsg.data[i].xmax
+            y2 = TargetsMsg.data[i].ymax
+            cls = TargetsMsg.data[i].Class
+            vx = TargetsMsg.data[i].vx
+            vy = TargetsMsg.data[i].vy
+
+            v =round(math.sqrt(vx*vx + vy*vy), 2) 
+
+            # 撞线的点(中心点)
+            x = int(x1 + ((x2 - x1) * 0.5))
+            y = int(y2)
+
+            #画出中心list_bboxs的中心点
+            list_pts = []
+            list_pts.append([x-point_radius, y-point_radius])
+            list_pts.append([x-point_radius, y+point_radius])
+            list_pts.append([x+point_radius, y+point_radius])
+            list_pts.append([x+point_radius, y-point_radius])
+            ndarray_pts = np.array(list_pts, np.int32)
+            cv_image = cv2.fillPoly(cv_image, [ndarray_pts], color=(0, 0, 255))
+            # # 绘制 检测框
+            cv2.rectangle(cv_image, (int(x1), int(y1)), (int(x2), int(y2)), (255, 255, 255), 1)
+            # 绘制 跟踪ID
+            cv2.putText(cv_image , str(track_id), (int(x1), int(y1)), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), lineType=cv2.LINE_AA)
+            # 绘制 目标类别
+            cv2.putText(cv_image , str(cls) + ", v: " + str(v), (int(x1), int(y1)+15), cv2.FONT_HERSHEY_SIMPLEX, 1, (0  , 0, 255), lineType=cv2.LINE_AA)     
+
+        # show data in image
+        font_draw_number = cv2.FONT_HERSHEY_SIMPLEX
+        draw_text_postion = (10, 50)
+        text_draw = 'Class Num: ' + str(classes_num)
+        cv_image = cv2.putText(img=cv_image, text=text_draw,
+                            org=draw_text_postion,
+                            fontFace=font_draw_number,
+                            fontScale=1, color=(0, 0, 255), thickness=2)
+
+        cv2.namedWindow("YOLO+SORT", cv2.WINDOW_NORMAL)
+        cv2.imshow("YOLO+SORT", cv_image)
+        cv2.waitKey(1)
     
 
 
@@ -301,6 +397,7 @@ if __name__ == '__main__':
     is_CompressedImage = rospy.get_param('/traffic_count/is_CompressedImage')
     size = rospy.get_param('/traffic_count/size')
     size = (int(size[1]), int(size[0]))
+    print("size size: ",size)
     padding = rospy.get_param('/traffic_count/padding')
     queue_speed = rospy.get_param('/traffic_count/queue_speed')
     url = rospy.get_param('/traffic_count/url')
@@ -314,6 +411,9 @@ if __name__ == '__main__':
     lines, polygons = read_json(polygon_path)
     multi_line = [[0] for i in range(len(lines))]
     multi_roi = [[0] for i in range(len(polygons))]
+    multi_stopline_pixel = [[0] for i in range(len(polygons))]
+    multi_stopline_world = [[0] for i in range(len(polygons))]
+
     count = 0
     for line in lines:
         multi_line[count] = line['line_points']
@@ -322,7 +422,11 @@ if __name__ == '__main__':
     count = 0
     for polygon in polygons:
         multi_roi[count] = polygon['points']
+        multi_stopline_pixel[count] = polygon["stop_line"]["pixel"]
+        multi_stopline_world[count] = polygon["stop_line"]["world"]
         print(multi_roi[count])
+        print(multi_stopline_pixel[count])
+        print(multi_stopline_world[count])
         count = count + 1
 
     frame_count = 0
@@ -364,18 +468,18 @@ if __name__ == '__main__':
     # url = "http://10.31.200.171:8001/api/dataView/create" 
         
     # tracker = Sort_Track(max_age, min_hits, camera_config_path)
-
-    # if is_CompressedImage:
-    #     image_sub0= message_filters.Subscriber(detect_image_topic, CompressedImage)
-    # else:
-    #     image_sub0= message_filters.Subscriber(detect_image_topic, Image)
-    # boxes_sub1 = message_filters.Subscriber(bounding_boxes_topic, BboxesCoordinatesMsg)
-    # # image_sub0= message_filters.Subscriber(detect_image_topic, CompressedImage)
-    # # boxes_sub1 = message_filters.Subscriber(bounding_boxes_topic, TracksMsg)
-    # ts = message_filters.ApproximateTimeSynchronizer([image_sub0, boxes_sub1], queue_size=15, slop=1)
-    # ts.registerCallback(callback)
-
-    rospy.Subscriber(bounding_boxes_topic, BboxesCoordinatesMsg, callback)
+    if is_show_image:
+        if is_CompressedImage:
+            image_sub0= message_filters.Subscriber(detect_image_topic, CompressedImage)
+        else:
+            image_sub0= message_filters.Subscriber(detect_image_topic, Image)
+        # boxes_sub1 = message_filters.Subscriber(bounding_boxes_topic, BboxesCoordinatesMsg)
+        # image_sub0= message_filters.Subscriber(detect_image_topic, CompressedImage)
+        boxes_sub1 = message_filters.Subscriber(bounding_boxes_topic, TargetsMsg)
+        ts = message_filters.ApproximateTimeSynchronizer([image_sub0, boxes_sub1], queue_size=15, slop=1)
+        ts.registerCallback(callback)
+    else:
+        rospy.Subscriber(bounding_boxes_topic, TargetsMsg, callback)
 
     rospy.spin()
 
