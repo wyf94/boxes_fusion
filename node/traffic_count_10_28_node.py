@@ -23,13 +23,6 @@ import yaml
 
 import requests
 
-# from traffic_count.msg import BoundingBox
-# from traffic_count.msg import BoundingBoxes
-# from sort_track.msg import Tracks as TracksMsg
-# from sort_track.msg import Targets as TargetsMsg
-# from traffic_count.msg import BboxCoordinate as BboxCoordinateMsg
-# from traffic_count.msg import BboxesCoordinates as BboxesCoordinatesMsg
-
 from sort_track.msg import Tracks as TracksMsg
 from sort_track.msg import BoundingBox
 from sort_track.msg import Target as TargetMsg
@@ -47,6 +40,9 @@ from traffic_count.sort_track_wyf import Sort_Track
 # from traffic_count.yolo_classes import CLASSES_LIST
 from traffic_count.classes import CLASSES_LIST, TRACK_CLASSES_LIST, TRACK_CLASSES_LEN
 
+'''
+多线程，用于周期更新数据
+'''
 class RepeatingTimer(Timer): 
     def run(self):
         while not self.finished.is_set():
@@ -80,6 +76,9 @@ def get_transfromation_matrix(config_path):
         return distance_to_pixel_matrix, pixel_to_distance_matrix
 
 def read_json(polygon_path):
+    '''
+    读取json文件 获取碰撞线collision_lines，统计区域polygons
+    '''
     # current_dir = os.path.dirname(__file__)
     f = open(polygon_path, encoding="UTF-8")
     file = json.load(f)
@@ -88,8 +87,11 @@ def read_json(polygon_path):
     return lines, polygons
 
 def dump_json():
+    '''
+    周期性更新碰撞线的数据
+    '''
     global Publisher_json, json_path, Line_statistics, up_count, down_count, dump_num, lock, track_time, \
-                  car_speed, car_head_passtime, line_occupy_flag, line_occupy_time, track_classes_list, pub_header, url
+            car_speed, car_head_passtime, line_occupy_flag, line_occupy_time, track_classes_list, pub_header, url
     # 周期性统计各个类别穿过每条线的情况
     Line_statistics = []
 
@@ -192,9 +194,12 @@ def dump_json():
 
 
 def image_boxes_callback(image,TargetsMsg):
+    '''
+    订阅图像与追踪数据话题，并实时更新区域内的统计信息
+    '''
     # start  = time.time()
     global frame_count, up_count, down_count, blue_list, yellow_list, classes_list, lines, polygons, multi_roi, multi_line, roi_num,json_path, Publisher_json, Line_statistics
-    global is_show_image, publish_image, tracker, car_speed,car_head_passtime, line_occupy_flag, line_occupy_time, padding, track_time,size,url, pub_header, queue_speed
+    global is_show_image, publish_image, car_speed,car_head_passtime, line_occupy_flag, line_occupy_time, padding, track_time,size,url, pub_header, queue_speed
     global multi_stopline_pixel, multi_stopline_world
     t1 = time.time()
     print("sub frame: ", frame_count)
@@ -225,16 +230,11 @@ def image_boxes_callback(image,TargetsMsg):
     for index in range(0, len(multi_roi)):
 
         # 设置roi区域的1，2点为停止线，并选择其中点为停止点
-        stop_x = int(multi_roi[index][0][0]+multi_roi[index][1][0])
+        stop_x = int(multi_roi[index][0][0] + multi_roi[index][1][0])
         stop_y = int(multi_roi[index][0][1] + multi_roi[index][1][1])
         ground_stop_x, ground_stop_y = cameratool.pixel2camera_projection(stop_x * 0.5, stop_y * 0.5)
         stop_point = (ground_stop_x/1000, ground_stop_y/1000)
-        # print("index:", index)
-        # print("multi_roi", multi_roi[index])
-        # print("zhongdian: ", [stop_x, stop_y])
-        # print("stop_point1: ", stop_point)
-
-        
+   
         roi_num[index], roi_color_image, area_info, queue_info = utils.roi_count_queue(multi_roi[index], TargetsMsg.data, 
                                                                     track_classes_list,  stop_point, roi_color, size, queue_speed, is_show_image)                                                    
 
@@ -294,13 +294,11 @@ def image_boxes_callback(image,TargetsMsg):
             if multi_line[index][i][1]+padding[1] >= size[0] or multi_line[index][i][1]+padding[1] <= 0:
                 print(" The point of lines out off range or padding out off range")
 
-        # print("car_speed: ",car_speed)
-
         # 周期性统计各个类别穿过每条线的情况
         polygon_mask_blue_and_yellow, polygon_color_image = utils.line2polygon(multi_line[index], padding, size, is_show_image)
         up_count[index], down_count[index] = utils.traffic_count(TargetsMsg, size,  track_classes_list,  polygon_mask_blue_and_yellow, 
                                                                 blue_list[index], yellow_list[index],  up_count[index], down_count[index], car_head_passtime[index], car_speed[index])
-        # print("car_speed: ",car_speed)                                                        
+
         # 计算occupancy
         line_occupy_flag[index] = utils.occupancy(TargetsMsg,  multi_line[index], padding, line_occupy_flag[index], line_occupy_time[index])
 
@@ -356,9 +354,12 @@ def image_boxes_callback(image,TargetsMsg):
         cv2.waitKey(1)
     
 def boxes_callback(TargetsMsg):
+    '''
+    订阅追踪数据话题，并实时更新区域内的统计信息和排队信息
+    '''
     # start  = time.time()
     global frame_count, up_count, down_count, blue_list, yellow_list, classes_list, lines, polygons, multi_roi, multi_line, roi_num,json_path, Publisher_json, Line_statistics
-    global is_show_image, publish_image, tracker, car_speed,car_head_passtime, line_occupy_flag, line_occupy_time, padding, track_time,size,url, pub_header, queue_speed
+    global is_show_image, publish_image, car_speed,car_head_passtime, line_occupy_flag, line_occupy_time, padding, track_time,size,url, pub_header, queue_speed
     global multi_stopline_pixel, multi_stopline_world
     print("sub frame: ", frame_count)
     frame_count += 1
@@ -515,7 +516,6 @@ if __name__ == '__main__':
         multi_stopline_pixel[count] = polygon["stop_line"][0]
         print(multi_roi[count])
         print(multi_stopline_pixel[count])
-        # print(multi_stopline_world[count])
         count = count + 1
 
     frame_count = 0
