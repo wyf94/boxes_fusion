@@ -23,13 +23,6 @@ import yaml
 
 import requests
 
-# from traffic_count.msg import BoundingBox
-# from traffic_count.msg import BoundingBoxes
-# from sort_track.msg import Tracks as TracksMsg
-# from sort_track.msg import Targets as TargetsMsg
-# from traffic_count.msg import BboxCoordinate as BboxCoordinateMsg
-# from traffic_count.msg import BboxesCoordinates as BboxesCoordinatesMsg
-
 from sort_track.msg import Tracks as TracksMsg
 from sort_track.msg import BoundingBox
 from sort_track.msg import Target as TargetMsg
@@ -47,6 +40,9 @@ from traffic_count.sort_track_wyf import Sort_Track
 # from traffic_count.yolo_classes import CLASSES_LIST
 from traffic_count.classes import CLASSES_LIST, TRACK_CLASSES_LIST, TRACK_CLASSES_LEN
 
+'''
+多线程，用于周期更新数据
+'''
 class RepeatingTimer(Timer): 
     def run(self):
         while not self.finished.is_set():
@@ -80,6 +76,9 @@ def get_transfromation_matrix(config_path):
         return distance_to_pixel_matrix, pixel_to_distance_matrix
 
 def read_json(polygon_path):
+    '''
+    读取json文件 获取碰撞线collision_lines，统计区域polygons
+    '''
     # current_dir = os.path.dirname(__file__)
     f = open(polygon_path, encoding="UTF-8")
     file = json.load(f)
@@ -88,8 +87,11 @@ def read_json(polygon_path):
     return lines, polygons
 
 def dump_json():
+    '''
+    周期性更新碰撞线的数据
+    '''
     global Publisher_json, json_path, Line_statistics, up_count, down_count, dump_num, lock, track_time, \
-                  car_speed, car_head_passtime, line_occupy_flag, line_occupy_time, track_classes_list, pub_header, url
+            car_speed, car_head_passtime, line_occupy_flag, line_occupy_time, track_classes_list, pub_header, url, is_Web
     # 周期性统计各个类别穿过每条线的情况
     Line_statistics = []
 
@@ -176,9 +178,10 @@ def dump_json():
     print("-------------------------------------------")
     # 删除周期更新信息
 
-    # url = "http://10.31.200.139:8001/api/dataView/create" 
-    # headers = {'Content-Type': 'application/json'}
-    # response = requests.post(url = url, headers = headers, data = json.dumps(Publisher_json))
+    if is_Web:
+        # url = "http://10.31.200.139:8001/api/dataView/create" 
+        headers = {'Content-Type': 'application/json'}
+        response = requests.post(url = url, headers = headers, data = json.dumps(Publisher_json))
 
     # lines 周期统计参数变量清零
     Line_statistics = []
@@ -192,10 +195,13 @@ def dump_json():
 
 
 def image_boxes_callback(image,TargetsMsg):
+    '''
+    订阅图像与追踪数据话题，并实时更新区域内的统计信息
+    '''
     # start  = time.time()
     global frame_count, up_count, down_count, blue_list, yellow_list, classes_list, lines, polygons, multi_roi, multi_line, roi_num,json_path, Publisher_json, Line_statistics
-    global is_show_image, publish_image, tracker, car_speed,car_head_passtime, line_occupy_flag, line_occupy_time, padding, track_time,size,url, pub_header, queue_speed
-    global multi_stopline_pixel, multi_stopline_world
+    global is_show_image, publish_image, car_speed,car_head_passtime, line_occupy_flag, line_occupy_time, padding, track_time,size,url, pub_header, queue_speed
+    global multi_stopline_pixel, multi_stopline_world, is_Web
     t1 = time.time()
     print("sub frame: ", frame_count)
 
@@ -225,21 +231,17 @@ def image_boxes_callback(image,TargetsMsg):
     for index in range(0, len(multi_roi)):
 
         # 设置roi区域的1，2点为停止线，并选择其中点为停止点
-        stop_x = int(multi_roi[index][0][0]+multi_roi[index][1][0])
+        stop_x = int(multi_roi[index][0][0] + multi_roi[index][1][0])
         stop_y = int(multi_roi[index][0][1] + multi_roi[index][1][1])
         ground_stop_x, ground_stop_y = cameratool.pixel2camera_projection(stop_x * 0.5, stop_y * 0.5)
         stop_point = (ground_stop_x/1000, ground_stop_y/1000)
-        # print("index:", index)
-        # print("multi_roi", multi_roi[index])
-        # print("zhongdian: ", [stop_x, stop_y])
-        # print("stop_point1: ", stop_point)
-
-        
+   
         roi_num[index], roi_color_image, area_info, queue_info = utils.roi_count_queue(multi_roi[index], TargetsMsg.data, 
                                                                     track_classes_list,  stop_point, roi_color, size, queue_speed, is_show_image)                                                    
 
         if is_show_image:
             cv_image = cv2.add(cv_image, roi_color_image)
+            
         area_json = {
             'area_id': polygons[index]['road_number'], 
             'car_num': 0,
@@ -280,9 +282,10 @@ def image_boxes_callback(image,TargetsMsg):
     # 删除周期更新信息
     if "period_statistical_info" in Publisher_json:
         del Publisher_json["period_statistical_info"]
-    # 推送区域信息到前端
-    # headers = {'Content-Type': 'application/json'}
-    # response = requests.post(url,headers = headers, data = json.dumps(Publisher_json))
+    if is_Web:
+        # 推送区域信息到前端
+        headers = {'Content-Type': 'application/json'}
+        response = requests.post(url,headers = headers, data = json.dumps(Publisher_json))
 
     # 各个类别穿过每条线的统计情况
     Line_statistics = []
@@ -294,13 +297,11 @@ def image_boxes_callback(image,TargetsMsg):
             if multi_line[index][i][1]+padding[1] >= size[0] or multi_line[index][i][1]+padding[1] <= 0:
                 print(" The point of lines out off range or padding out off range")
 
-        # print("car_speed: ",car_speed)
-
         # 周期性统计各个类别穿过每条线的情况
         polygon_mask_blue_and_yellow, polygon_color_image = utils.line2polygon(multi_line[index], padding, size, is_show_image)
         up_count[index], down_count[index] = utils.traffic_count(TargetsMsg, size,  track_classes_list,  polygon_mask_blue_and_yellow, 
                                                                 blue_list[index], yellow_list[index],  up_count[index], down_count[index], car_head_passtime[index], car_speed[index])
-        # print("car_speed: ",car_speed)                                                        
+
         # 计算occupancy
         line_occupy_flag[index] = utils.occupancy(TargetsMsg,  multi_line[index], padding, line_occupy_flag[index], line_occupy_time[index])
 
@@ -351,15 +352,19 @@ def image_boxes_callback(image,TargetsMsg):
                             fontFace=font_draw_number,
                             fontScale=1, color=(0, 0, 255), thickness=2)
 
+        cv_image = cv2.resize(cv_image, (0, 0), fx=0.6, fy=0.6, interpolation=cv2.INTER_NEAREST)
         cv2.namedWindow("YOLO+SORT", cv2.WINDOW_NORMAL)
         cv2.imshow("YOLO+SORT", cv_image)
         cv2.waitKey(1)
     
 def boxes_callback(TargetsMsg):
+    '''
+    订阅追踪数据话题，并实时更新区域内的统计信息和排队信息
+    '''
     # start  = time.time()
     global frame_count, up_count, down_count, blue_list, yellow_list, classes_list, lines, polygons, multi_roi, multi_line, roi_num,json_path, Publisher_json, Line_statistics
-    global is_show_image, publish_image, tracker, car_speed,car_head_passtime, line_occupy_flag, line_occupy_time, padding, track_time,size,url, pub_header, queue_speed
-    global multi_stopline_pixel, multi_stopline_world
+    global is_show_image, publish_image, car_speed,car_head_passtime, line_occupy_flag, line_occupy_time, padding, track_time,size,url, pub_header, queue_speed
+    global multi_stopline_pixel, multi_stopline_world, is_Web
     print("sub frame: ", frame_count)
     frame_count += 1
 
@@ -425,8 +430,9 @@ def boxes_callback(TargetsMsg):
     if "period_statistical_info" in Publisher_json:
         del Publisher_json["period_statistical_info"]
     # 推送区域信息到前端
-    # headers = {'Content-Type': 'application/json'}
-    # response = requests.post(url,headers = headers, data = json.dumps(Publisher_json))
+    if is_Web:
+        headers = {'Content-Type': 'application/json'}
+        response = requests.post(url,headers = headers, data = json.dumps(Publisher_json))
 
     # 各个类别穿过每条线的统计情况
     Line_statistics = []
@@ -463,22 +469,25 @@ if __name__ == '__main__':
     bounding_boxes_topic = rospy.get_param('~bounding_boxes_topic')
     detect_image_topic = rospy.get_param('~detect_image_topic')
 
-    # camera config(if unused, you can delete)
-    max_age = rospy.get_param('~max_age')
-    min_hits = rospy.get_param('~min_hits')
+    # # camera config(if unused, you can delete)
+    # max_age = rospy.get_param('~max_age')
+    # min_hits = rospy.get_param('~min_hits')
     
 
     period = rospy.get_param('~period')
     is_CompressedImage = rospy.get_param('~is_CompressedImage')
+    polygon_path = rospy.get_param('~polygon_path')
+
     size = rospy.get_param('~size')
     size = (int(size[1]), int(size[0]))
     padding = rospy.get_param('~padding')
     queue_speed = rospy.get_param('~queue_speed')
+
+    is_Web = rospy.get_param('~is_Web')
     url = rospy.get_param('~url')
-    polygon_path = rospy.get_param('~polygon_path')
 
+    # 相机或者静态矩阵
     is_static_matrix = rospy.get_param("~is_static_matrix")
-
     if is_static_matrix:
         from traffic_count.tf_static_matrix import CameraTools
         static_matrix_config_path = rospy.get_param("~static_matrix_config_path")
@@ -515,7 +524,6 @@ if __name__ == '__main__':
         multi_stopline_pixel[count] = polygon["stop_line"][0]
         print(multi_roi[count])
         print(multi_stopline_pixel[count])
-        # print(multi_stopline_world[count])
         count = count + 1
 
     frame_count = 0

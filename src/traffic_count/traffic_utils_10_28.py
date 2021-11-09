@@ -5,6 +5,13 @@ import time
 
 
 def image_mask(list_point, color_value, size):
+    '''
+    生成包含值为color_value的多边形，尺寸为size的mask
+    :param point_list_first: [(x1，y1), (x2，y2), ... , (xn，yn)]
+    :param color_value: 1-255
+    :param size: (x，y) 
+    :return: mask.
+    '''
     # 根据视频尺寸，填充一个polygon，供撞线计算使用
     mask_image_temp = np.zeros(size, dtype=np.uint8)
 
@@ -16,6 +23,13 @@ def image_mask(list_point, color_value, size):
     return polygon_color_value
 
 def polygon_mask(point_list_first, point_list_second, size):
+    '''
+    生成合并两个多边形，尺寸为size的mask
+    :param point_list_first: [(x1，y1), (x2，y2), ... , (xn，yn)]
+    :param point_list_second: [(x1，y1), (x2，y2), ... , (xn，yn)]
+    :param size: (x，y) 
+    :return: 不设置颜色的mask，设置颜色的mask.
+    '''
     polygon_value_first = image_mask(point_list_first, 1, size)
     polygon_value_second = image_mask(point_list_second, 2, size)
     
@@ -34,6 +48,13 @@ def polygon_mask(point_list_first, point_list_second, size):
     return polygon_mask_first_and_second,  polygon_color_image
 
 def  line2polygon(line, padding, size, show_image = True):
+    '''
+    以碰撞线为分界线，将碰撞线填充为两个值分别为1，2的矩形，同时生成包含矩形，尺寸为size的mask
+    :param line: (x，y) 
+    :param padding: (x，y) 
+    :param size: (x，y) 
+    :return: 不设置颜色的mask，设置颜色的mask.
+    '''
     width, height = padding[0], padding[1]
     polygon_0  = [line[0], line[1], [line[1][0] + width, line[1][1] + height], [line[0][0] + width, line[0][1] + height]]
     polygon_1  = [line[0], line[1], [line[1][0] - width, line[1][1] - height], [line[0][0] - width, line[0][1] - height]]
@@ -56,6 +77,18 @@ def  line2polygon(line, padding, size, show_image = True):
 
 
 def roi_count_queue(roi_point, list_bboxes, list_classes, stop_point, color, size, queue_speed, is_show_image = False):
+    """
+    统计全图各个类别的数量。
+    :param roi_point: [(x1，y1), (x2，y2), ... , (xn，yn)] 统计的roi区域
+    :param list_bboxes: BoundingBoxs list
+    :param list_classes: Classes list
+    :param stop_point: 区域的停车点(起始点)
+    :param color: [x, x, x], x = 0-255
+    :param size: (x, y)
+    :param queue_speed: v 判断是否为排队的平均速度
+    :param is_show_image: true/false 
+    :return: 区域内各个类别的数量， 设置颜色的roi图， 区域统计信息，排队信息.
+    """
     class_num = [0]*len(list_classes)
 
     roi_mask_value = image_mask(roi_point, 1, size)
@@ -158,6 +191,12 @@ def roi_count_queue(roi_point, list_bboxes, list_classes, stop_point, color, siz
     return class_num, roi_color_image,  area_info, queue_up_info
 
 def image_count(list_bboxes, list_classes):
+    """
+    统计全图各个类别的数量。
+    :param list_bboxes: BoundingBoxs list
+    :param list_classes: Classes list
+    :return: 各个类别的数量.
+    """
     class_num = [0]*len(list_classes)
   
     for i in range(0, len(list_bboxes)):
@@ -176,25 +215,25 @@ def image_count(list_bboxes, list_classes):
     return class_num
 
 
-def bboxes_mask(tracks_msg,  size,  color_value = 1):
-    img_bboxes_mask = np.zeros(size, dtype=np.uint8)
-    img_bboxes_mask = img_bboxes_mask[:, :, np.newaxis]
+# def bboxes_mask(tracks_msg,  size,  color_value = 1):
+#     img_bboxes_mask = np.zeros(size, dtype=np.uint8)
+#     img_bboxes_mask = img_bboxes_mask[:, :, np.newaxis]
 
-    if len(tracks_msg.data) > 0:
-        for i in range(0, len(tracks_msg.data)):
-            x1 = tracks_msg.data[i].xmin
-            y1 = tracks_msg.data[i].ymin
-            x2 = tracks_msg.data[i].xmax
-            y2 = tracks_msg.data[i].ymax
-            point_list = [(x1, y1), (x1, y2), (x2, y2), (x2, y1)]
-            bboxes_mask = image_mask(point_list, 1, size)
-            img_bboxes_mask += bboxes_mask
+#     if len(tracks_msg.data) > 0:
+#         for i in range(0, len(tracks_msg.data)):
+#             x1 = tracks_msg.data[i].xmin
+#             y1 = tracks_msg.data[i].ymin
+#             x2 = tracks_msg.data[i].xmax
+#             y2 = tracks_msg.data[i].ymax
+#             point_list = [(x1, y1), (x1, y2), (x2, y2), (x2, y1)]
+#             bboxes_mask = image_mask(point_list, 1, size)
+#             img_bboxes_mask += bboxes_mask
 
-    # set the first  polygon to yelllow
-    yellow_color_plate = [255, 255, 255]
-    yellow_image = np.array(img_bboxes_mask * yellow_color_plate, np.uint8)
+#     # set the first  polygon to yelllow
+#     yellow_color_plate = [255, 255, 255]
+#     yellow_image = np.array(img_bboxes_mask * yellow_color_plate, np.uint8)
 
-    return img_bboxes_mask, yellow_image
+#     return img_bboxes_mask, yellow_image
 
 def compute_IOU(rec1,rec2):
     """
@@ -218,6 +257,15 @@ def compute_IOU(rec1,rec2):
         return S_cross/(S1+S2-S_cross)
 
 def occupancy(tracks_msg, line, padding, line_occupy_flag, line_occupy_time):
+    '''
+    判断碰撞线上是否有车辆占据
+    :param tracks_msg:  订阅的追踪数据话题
+    :param line: (x0,y0,x1,y1) 
+    :param padding: (x，y) line填充为矩形的长宽
+    :param line_occupy_flag: list 每帧是否存在碰撞线被占据
+    :param line_occupy_flag: list 记录占据时间
+    :return: 碰撞线占据list.
+    '''
     l_x1, l_y1, l_x2, l_y2 = line[0][0], line[0][1], line[1][0], line[1][1]
     rec1 = (l_x1, l_y1, l_x2 + padding[0] , l_y2 + padding[1])
     
@@ -253,7 +301,20 @@ def occupancy(tracks_msg, line, padding, line_occupy_flag, line_occupy_time):
 
 def traffic_count(tracks_msg, size, list_classes,  polygon_mask_first_and_second, first_list, second_list,  
                                                 up_count, down_count, car_head_passtime, car_speed):
-    class_num = len(list_classes)
+    """
+    统计通过碰撞线的数量。
+    :param tracks_msg:  追踪话题
+    :param size: (x, y)
+    :param list_classes: Classes list
+    :param polygon_mask_first_and_second: 包含的mask
+    :param first_list:  通过第一个矩形的track—id
+    :param second_list: 通过第二个矩形的track—id
+    :param up_count: 1--->2 方向的通过数量
+    :param down_count: 2--->1 方向的通过数量
+    :param car_head_passtime: 汽车通过的时间戳
+    :param car_speed:  汽车通过的速度
+    :return: 1--->2 方向的通过数量， 2--->1 方向的通过数量.
+    """
 
     if len(tracks_msg.data) > 0:
         for i in range(0, len(tracks_msg.data)):

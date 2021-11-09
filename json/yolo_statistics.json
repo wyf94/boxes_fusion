@@ -1,17 +1,17 @@
 {
-    "time_stamp": 1635997124,
+    "time_stamp": 1636448680,
     "device_id": 1,
     "msg_source": "camera",
     "area_statistical_info": [
         {
             "area_id": "juxing1",
             "car_num": 1,
-            "ave_car_speed": 0.6,
+            "ave_car_speed": 1.02,
             "car_distribute": 0.0,
-            "head_car_pos": 106.83,
-            "head_car_speed": 0.6,
-            "tail_car_pos": 106.83,
-            "tail_car_speed": 0.6,
+            "head_car_pos": 102.56,
+            "head_car_speed": 1.02,
+            "tail_car_pos": 102.56,
+            "tail_car_speed": 1.02,
             "count_list": [
                 {
                     "class": "car",
@@ -37,40 +37,62 @@
         },
         {
             "area_id": "juxing2",
-            "car_num": 0,
-            "ave_car_speed": 0,
-            "car_distribute": 0,
-            "head_car_pos": 0,
-            "head_car_speed": 0,
-            "tail_car_pos": 0,
-            "tail_car_speed": 0
+            "car_num": 1,
+            "ave_car_speed": 0.15,
+            "car_distribute": 0.0,
+            "head_car_pos": 105.84,
+            "head_car_speed": 0.15,
+            "tail_car_pos": 105.84,
+            "tail_car_speed": 0.15,
+            "count_list": [
+                {
+                    "class": "car",
+                    "num": 1
+                },
+                {
+                    "class": "bus",
+                    "num": 0
+                },
+                {
+                    "class": "truck",
+                    "num": 0
+                },
+                {
+                    "class": "bike",
+                    "num": 0
+                },
+                {
+                    "class": "motor",
+                    "num": 0
+                }
+            ]
         }
     ],
     "queue_up_info": [
         {
             "lane_id": "juxing1",
-            "queue_len": 106.83,
-            "head_car_pos": 106.83,
-            "tail_car_pos": 106.83,
+            "queue_len": 102.56,
+            "head_car_pos": 102.56,
+            "tail_car_pos": 102.56,
             "car_count": 1
         },
         {
             "lane_id": "juxing2",
-            "queue_len": 0,
-            "head_car_pos": 0,
-            "tail_car_pos": 0,
-            "car_count": 0
+            "queue_len": 105.84,
+            "head_car_pos": 105.84,
+            "tail_car_pos": 105.84,
+            "car_count": 1
         }
     ],
     "period_statistical_info": [
         {
             "channel_id": "zhixian1",
-            "total_car": 0.0,
-            "occupancy": 0.0,
+            "total_car": 1.0,
+            "occupancy": 0.41712703704833987,
             "classified_statistic": [
                 {
                     "class": "car",
-                    "num": 0.0
+                    "num": 1.0
                 },
                 {
                     "class": "bus",
@@ -89,9 +111,9 @@
                     "num": 0.0
                 }
             ],
-            "ave_car_head_dis": 0,
-            "ave_car_len": 0,
-            "ave_car_speed": 0
+            "ave_car_head_dis": 0.0,
+            "ave_car_len": 3.0,
+            "ave_car_speed": 2.25
         },
         {
             "channel_id": "zhixian2",

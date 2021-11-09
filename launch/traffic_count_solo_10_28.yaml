@@ -4,20 +4,29 @@ bounding_boxes_topic: "/sort_track/targets"
 # Image topic here
 detect_image_topic: "output_image_nms"
 
-camera_config_path: "/home/racobit/ros_ws/src/traffic_count/config/camera_config.yaml"
-max_age: 5
-min_hits: 1
+
+# max_age: 5
+# min_hits: 1
 
 #是否使用静态转换矩阵
 is_static_matrix: false
 # 静态矩阵的文件路径
 static_matrix_config_path: "/home/racobit/ros_ws/src/traffic_count/config/static_matrix.json"
+# 相机内参的文件路径
+camera_config_path: "/home/racobit/ros_ws/src/traffic_count/config/camera_config.yaml"
 
+# 更新统计周期  
 period: 20
+# 是否压缩图像
 is_CompressedImage: False
-
+# 保存碰撞线及区域信息的文件路径
 polygon_path: "/home/racobit/ros_ws/src/traffic_count/json/polygon_final.json"
+
+# 是否传输到前端
+is_Web: false
+# 前端API接口
 url: "http://10.31.200.139:8001/api/dataView/create" 
+
 size: [2448, 2048] # size(height, width)
 padding: [0, 50] # line填充为矩形的(weight, heigeht)
 queue_speed: 5 # 排队最大速度，即当区域内平均速度小于排队最大速度，视为排队
