@@ -81,6 +81,22 @@ CLASSES_LIST = [
     'toothbrush',
 ]
 
+TRACK_CLASSES_LIST = [
+    'bicycle',
+    'car',
+    'motorbike',
+    'bus',
+    'truck',
+]
+
+TRACK_CLASSES_LEN = [
+    1, 
+    3, 
+    1,
+    6,
+    6
+]
+
 def get_cls_dict(category_num):
     """Get the class ID to name translation dictionary."""
     if category_num == len(CLASSES_LIST):

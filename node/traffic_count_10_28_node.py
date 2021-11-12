@@ -37,7 +37,7 @@ from sensor_msgs.msg import Image, CameraInfo, CompressedImage
 import traffic_count.traffic_utils_10_28 as utils
 import sort.sort as sort
 from traffic_count.sort_track_wyf import Sort_Track
-# from traffic_count.yolo_classes import CLASSES_LIST
+# from traffic_count.yolo_classes import CLASSES_LIST, TRACK_CLASSES_LIST, TRACK_CLASSES_LEN
 from traffic_count.classes import CLASSES_LIST, TRACK_CLASSES_LIST, TRACK_CLASSES_LEN
 
 '''
@@ -382,9 +382,10 @@ def boxes_callback(TargetsMsg):
     ROI_queue = []
     for index in range(0, len(multi_roi)):
         # 设置roi区域的1，2点为停止线，并选择其中点为停止点
-        stop_x = (multi_stopline_world[index][0][0] + multi_stopline_world[index][1][0]) * 0.5
-        stop_y = (multi_stopline_world[index][0][1] + multi_stopline_world[index][1][1]) * 0.5
-        stop_point = (stop_x, stop_y)
+        stop_x = int(multi_roi[index][0][0] + multi_roi[index][1][0])
+        stop_y = int(multi_roi[index][0][1] + multi_roi[index][1][1])
+        ground_stop_x, ground_stop_y = cameratool.pixel2camera_projection(stop_x * 0.5, stop_y * 0.5)
+        stop_point = (ground_stop_x/1000, ground_stop_y/1000)
         
         roi_num[index], roi_color_image, area_info, queue_info = utils.roi_count_queue(multi_roi[index], TargetsMsg.data, 
                                                                     track_classes_list,  stop_point, roi_color, size, queue_speed, is_show_image)                                                    
