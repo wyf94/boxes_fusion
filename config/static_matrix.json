@@ -1,0 +1,51 @@
+{
+  "rosTopicPort": 9090,
+  "socketProxyPort": 63029,
+  "staticMatrixOption": {
+    "isStaticMatrix": false,
+    "pixel2world": [
+      [
+        0.12249543294109,
+        0.00507558407797999,
+        -153.574548541856
+      ],
+      [
+        0.00548530205987942,
+        -0.00625189407451038,
+        1223.7091164104
+      ],
+      [
+        -0.000325568289917873,
+        0.0185417624680751,
+        1
+      ]
+    ],
+    "world2pixel": [
+      [
+        45171.2900841011,
+        5708.89339638874,
+        -10108.8253196085
+      ],
+      [
+        693.177554174174,
+        -144.188571407434,
+        302333.744096904
+      ],
+      [
+        -0.479029563088769,
+        4.5700217999309,
+        1
+      ]
+    ]
+  },
+  "baseInfo": {
+    "name": "ECU XXX XXX",
+    "version": "1.2.3",
+    "subName": "Edge Computing Unit",
+    "processor": "Nvidia Jetson Xariver AGX",
+    "memorySize": "16GB",
+    "serial": "LK9308999992",
+    "systemVersion": "Ubuntu 18.04",
+    "logo": "logo.jpeg"
+  }
+}

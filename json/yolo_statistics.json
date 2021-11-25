@@ -1,0 +1,43 @@
+{
+    "time_stamp": 1637826342,
+    "device_id": 1,
+    "msg_source": "camera",
+    "area_statistical_info": [
+        {
+            "area_id": "juxing1",
+            "car_num": 0,
+            "ave_car_speed": 0,
+            "car_distribute": 0,
+            "head_car_pos": 0,
+            "head_car_speed": 0,
+            "tail_car_pos": 0,
+            "tail_car_speed": 0
+        },
+        {
+            "area_id": "juxing2",
+            "car_num": 0,
+            "ave_car_speed": 0,
+            "car_distribute": 0,
+            "head_car_pos": 0,
+            "head_car_speed": 0,
+            "tail_car_pos": 0,
+            "tail_car_speed": 0
+        }
+    ],
+    "queue_up_info": [
+        {
+            "lane_id": "juxing1",
+            "queue_len": 0,
+            "head_car_pos": 0,
+            "tail_car_pos": 0,
+            "car_count": 0
+        },
+        {
+            "lane_id": "juxing2",
+            "queue_len": 0,
+            "head_car_pos": 0,
+            "tail_car_pos": 0,
+            "car_count": 0
+        }
+    ]
+}
